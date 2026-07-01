@@ -239,6 +239,19 @@ body {
   #scanner-reader {
     border-radius: 8px;
     overflow: hidden;
+    position: relative;
+
+    video,
+    canvas {
+      width: 100% !important;
+      border-radius: 8px;
+    }
+
+    canvas.drawingBuffer {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 import { ref, onUnmounted } from 'vue'
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+import Quagga from '@ericblade/quagga2'
 
 export function useScanner() {
   const scanner = ref(null)
@@ -7,61 +7,72 @@ export function useScanner() {
   const lastResult = ref(null)
   const error = ref(null)
 
-  async function startScanner(containerId, onScan) {
-    try {
-      error.value = null
-      scanner.value = new Html5Qrcode(containerId, {
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.CODE_93,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.ITF,
-          Html5QrcodeSupportedFormats.CODABAR,
-        ],
-      })
+  function startScanner(containerId, onScan) {
+    error.value = null
 
-      // 根据容器实际宽度动态计算扫描框大小
-      const container = document.getElementById(containerId)
-      const containerWidth = container ? container.offsetWidth : 300
-      const scanSize = Math.min(Math.floor(containerWidth * 0.9), 500)
-
-      await scanner.value.start(
-        { facingMode: 'environment' },
-        {
-          fps: 15,
-          qrbox: { width: scanSize, height: scanSize },
-          aspectRatio: 1.0,
-          disableFlip: false,
-        },
-        (decodedText) => {
-          lastResult.value = decodedText
-          // 振动反馈
-          if (navigator.vibrate) navigator.vibrate(200)
-          if (onScan) onScan(decodedText)
-        },
-        () => {} // 忽略扫描失败（持续扫描）
-      )
-
-      isScanning.value = true
-    } catch (err) {
-      error.value = '无法启动摄像头: ' + err.message
-      throw err
+    const container = document.getElementById(containerId)
+    if (!container) {
+      error.value = '找不到扫描容器'
+      return
     }
+
+    Quagga.init({
+      inputStream: {
+        type: 'LiveStream',
+        target: container,
+        constraints: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      },
+      decoder: {
+        readers: [
+          'code_128_reader',
+          'code_39_reader',
+          'ean_reader',
+          'ean_8_reader',
+          'upc_reader',
+          'upc_e_reader',
+          'codabar_reader',
+          'i2of5_reader',
+        ],
+      },
+      locate: true,
+      frequency: 10,
+    }, (err) => {
+      if (err) {
+        error.value = '无法启动摄像头: ' + (err.message || err)
+        return
+      }
+      Quagga.start()
+      isScanning.value = true
+    })
+
+    Quagga.onDetected((result) => {
+      if (!result || !result.codeResult) return
+      const code = result.codeResult.code
+      if (!code) return
+
+      // 去重：连续相同结果间隔 2 秒
+      const now = Date.now()
+      if (lastResult.value === code && now - (lastResult._time || 0) < 2000) return
+      lastResult.value = code
+      lastResult._time = now
+
+      // 振动反馈
+      if (navigator.vibrate) navigator.vibrate(200)
+      if (onScan) onScan(code)
+    })
   }
 
-  async function stopScanner() {
-    if (scanner.value && isScanning.value) {
+  function stopScanner() {
+    if (isScanning.value) {
       try {
-        await scanner.value.stop()
+        Quagga.stop()
       } catch (e) {
         // 忽略停止错误
       }
-      scanner.value = null
       isScanning.value = false
     }
   }

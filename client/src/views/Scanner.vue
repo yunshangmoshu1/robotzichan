@@ -165,11 +165,11 @@ const quickLocation = ref('')
 const showBorrowDialog = ref(false)
 const borrowForm = reactive({ borrowed_to: '', return_due: '' })
 
-async function toggleScan() {
+function toggleScan() {
   if (isScanning.value) {
-    await stopScanner()
+    stopScanner()
   } else {
-    await startScanner('scanner-reader', onScanSuccess)
+    startScanner('scanner-reader', onScanSuccess)
   }
 }
 
