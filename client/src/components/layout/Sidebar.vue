@@ -1,0 +1,55 @@
+<template>
+  <div class="sidebar" :class="{ collapsed }">
+    <div class="logo">
+      <span v-if="!collapsed">ROBO::TRACK</span>
+      <span v-else>RT</span>
+    </div>
+    <el-menu
+      :default-active="$route.path"
+      :collapse="collapsed"
+      router
+      background-color="transparent"
+      text-color="#bfcbd9"
+      active-text-color="#409eff"
+    >
+      <el-menu-item index="/">
+        <el-icon><DataBoard /></el-icon>
+        <template #title>仪表盘</template>
+      </el-menu-item>
+      <el-menu-item index="/robots">
+        <el-icon><Box /></el-icon>
+        <template #title>资产列表</template>
+      </el-menu-item>
+      <el-menu-item index="/scanner">
+        <el-icon><Camera /></el-icon>
+        <template #title>条码扫描</template>
+      </el-menu-item>
+      <el-menu-item index="/labels">
+        <el-icon><Tickets /></el-icon>
+        <template #title>标签生成</template>
+      </el-menu-item>
+      <el-menu-item index="/inventory">
+        <el-icon><DocumentChecked /></el-icon>
+        <template #title>盘点管理</template>
+      </el-menu-item>
+      <el-menu-item index="/dingtalk">
+        <el-icon><ChatDotRound /></el-icon>
+        <template #title>钉钉集成</template>
+      </el-menu-item>
+      <el-menu-item index="/reports">
+        <el-icon><TrendCharts /></el-icon>
+        <template #title>报表统计</template>
+      </el-menu-item>
+      <el-menu-item index="/settings">
+        <el-icon><Setting /></el-icon>
+        <template #title>系统设置</template>
+      </el-menu-item>
+    </el-menu>
+  </div>
+</template>
+
+<script setup>
+defineProps({
+  collapsed: Boolean,
+})
+</script>
