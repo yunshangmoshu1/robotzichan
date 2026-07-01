@@ -3,5 +3,6 @@ import api from './index'
 export const authApi = {
   login: (username, password) => api.post('/auth/login', { username, password }),
   register: (data) => api.post('/auth/register', data),
+  registerPublic: (data) => api.post('/auth/register-public', data),
   me: () => api.get('/auth/me'),
 }

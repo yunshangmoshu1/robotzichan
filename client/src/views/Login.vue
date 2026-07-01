@@ -13,19 +13,21 @@
 
       <div class="login-card">
         <p class="eyebrow">资产管理系统</p>
-        <h1>欢迎回来</h1>
-        <p class="subtext">登录后查看机器人资产、盘点和钉钉同步状态。</p>
+        <h1>{{ isRegister ? '注册账号' : '欢迎回来' }}</h1>
+        <p class="subtext">{{ isRegister ? '填写个人信息创建账号，注册后直接进入系统。' : '登录后查看机器人资产、盘点和钉钉同步状态。' }}</p>
 
+        <!-- 登录表单 -->
         <el-form
-          ref="formRef"
-          :model="form"
+          v-if="!isRegister"
+          ref="loginFormRef"
+          :model="loginForm"
           :rules="loginRules"
           @submit.prevent="handleLogin"
           size="large"
         >
           <el-form-item prop="username">
             <el-input
-              v-model="form.username"
+              v-model="loginForm.username"
               placeholder="用户名"
               prefix-icon="User"
               clearable
@@ -34,7 +36,7 @@
 
           <el-form-item prop="password">
             <el-input
-              v-model="form.password"
+              v-model="loginForm.password"
               placeholder="密码"
               type="password"
               show-password
@@ -53,7 +55,66 @@
           </el-button>
         </el-form>
 
-        <div class="login-hint">
+        <!-- 注册表单 -->
+        <el-form
+          v-else
+          ref="registerFormRef"
+          :model="registerForm"
+          :rules="registerRules"
+          @submit.prevent="handleRegister"
+          size="large"
+        >
+          <el-form-item prop="display_name">
+            <el-input
+              v-model="registerForm.display_name"
+              placeholder="你的姓名"
+              prefix-icon="UserFilled"
+              clearable
+            />
+          </el-form-item>
+
+          <el-form-item prop="username">
+            <el-input
+              v-model="registerForm.username"
+              placeholder="用户名（登录用）"
+              prefix-icon="User"
+              clearable
+            />
+          </el-form-item>
+
+          <el-form-item prop="password">
+            <el-input
+              v-model="registerForm.password"
+              placeholder="密码"
+              type="password"
+              show-password
+              prefix-icon="Lock"
+              @keyup.enter="handleRegister"
+            />
+          </el-form-item>
+
+          <el-button
+            type="primary"
+            class="login-btn"
+            :loading="loading"
+            @click="handleRegister"
+          >
+            {{ loading ? '注册中...' : '注册并进入' }}
+          </el-button>
+        </el-form>
+
+        <div class="toggle-mode">
+          <template v-if="isRegister">
+            <span>已有账号？</span>
+            <el-link type="primary" :underline="false" @click="isRegister = false">去登录</el-link>
+          </template>
+          <template v-else>
+            <span>没有账号？</span>
+            <el-link type="primary" :underline="false" @click="isRegister = true">注册新账号</el-link>
+          </template>
+        </div>
+
+        <div v-if="!isRegister" class="login-hint">
           <el-icon><InfoFilled /></el-icon>
           <span>默认账号：admin / admin123</span>
         </div>
@@ -78,23 +139,50 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { InfoFilled } from '@element-plus/icons-vue'
+import { InfoFilled, UserFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { loginRules } from '@/utils/validators'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const formRef = ref(null)
+const loginFormRef = ref(null)
+const registerFormRef = ref(null)
 const loading = ref(false)
-const form = reactive({ username: '', password: '' })
+const isRegister = ref(false)
+
+const loginForm = reactive({ username: '', password: '' })
+const registerForm = reactive({ display_name: '', username: '', password: '' })
+
+const registerRules = {
+  display_name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码至少 6 位', trigger: 'blur' },
+  ],
+}
 
 async function handleLogin() {
-  await formRef.value.validate()
+  await loginFormRef.value.validate()
   loading.value = true
   try {
-    await authStore.login(form.username, form.password)
+    await authStore.login(loginForm.username, loginForm.password)
     ElMessage.success('登录成功')
+    router.push('/')
+  } catch (err) {
+    // 错误已在 API 拦截器中处理
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleRegister() {
+  await registerFormRef.value.validate()
+  loading.value = true
+  try {
+    await authStore.registerPublic(registerForm)
+    ElMessage.success('注册成功')
     router.push('/')
   } catch (err) {
     // 错误已在 API 拦截器中处理
@@ -199,6 +287,15 @@ h1 {
   height: 44px;
   border-radius: 8px;
   font-weight: 700;
+}
+
+.toggle-mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: #6d7b84;
 }
 
 .login-hint {

@@ -5,42 +5,43 @@
         <el-button @click="$router.back()" text><el-icon><ArrowLeft /></el-icon> 返回</el-button>
         <h2>{{ form.type }} - {{ form.serial }}</h2>
         <el-tag :type="statusColors[form.status]">{{ statusLabels[form.status] || form.status }}</el-tag>
+        <span v-if="saving" class="saving-hint"><el-icon class="is-loading"><Loading /></el-icon> 保存中...</span>
+        <span v-else-if="justSaved" class="saved-hint"><el-icon><Check /></el-icon> 已保存</span>
       </div>
       <div>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
         <el-button type="danger" @click="handleDelete">删除</el-button>
       </div>
     </div>
 
     <el-row :gutter="24">
-      <!-- 基本信息（可编辑表单） -->
+      <!-- 基本信息（可编辑表单，修改即自动保存） -->
       <el-col :xs="24" :sm="16">
         <el-card header="基本信息">
-          <el-form ref="formRef" :model="form" :rules="robotRules" label-width="90px">
+          <el-form :model="form" label-width="90px">
             <el-row :gutter="16">
               <el-col :xs="24" :sm="12">
-                <el-form-item label="类型" prop="type">
-                  <el-select v-model="form.type" filterable allow-create default-first-option placeholder="选择或输入类型" style="width: 100%;">
+                <el-form-item label="类型">
+                  <el-select v-model="form.type" filterable allow-create default-first-option placeholder="选择或输入类型" style="width: 100%;" @change="onFieldChange('type', $event)">
                     <el-option v-for="t in filterOptions.types" :key="t" :label="t" :value="t" />
                   </el-select>
                 </el-form-item>
               </el-col>
               <el-col :xs="24" :sm="12">
-                <el-form-item label="序列号" prop="serial">
-                  <el-input v-model="form.serial" placeholder="输入序列号" />
+                <el-form-item label="序列号">
+                  <el-input v-model="form.serial" placeholder="输入序列号" @blur="onFieldChange('serial', form.serial)" />
                 </el-form-item>
               </el-col>
             </el-row>
 
             <el-row :gutter="16">
               <el-col :xs="24" :sm="12">
-                <el-form-item label="条形码" prop="barcode">
-                  <el-input v-model="form.barcode" placeholder="输入条形码数字" />
+                <el-form-item label="条形码">
+                  <el-input v-model="form.barcode" placeholder="输入条形码数字" @blur="onFieldChange('barcode', form.barcode)" />
                 </el-form-item>
               </el-col>
               <el-col :xs="24" :sm="12">
-                <el-form-item label="状态" prop="status">
-                  <el-select v-model="form.status" style="width: 100%;">
+                <el-form-item label="状态">
+                  <el-select v-model="form.status" style="width: 100%;" @change="onFieldChange('status', $event)">
                     <el-option v-for="s in statusOptions" :key="s" :label="s" :value="s" />
                   </el-select>
                 </el-form-item>
@@ -49,35 +50,37 @@
 
             <el-row :gutter="16">
               <el-col :xs="24" :sm="12">
-                <el-form-item label="负责人" prop="person">
+                <el-form-item label="负责人">
                   <el-autocomplete
                     v-model="form.person"
                     :fetch-suggestions="queryPersons"
                     placeholder="输入负责人"
                     style="width: 100%;"
+                    @blur="onFieldChange('person', form.person)"
                   />
                 </el-form-item>
               </el-col>
               <el-col :xs="24" :sm="12">
-                <el-form-item label="部门" prop="department">
-                  <el-input v-model="form.department" placeholder="输入部门" />
+                <el-form-item label="部门">
+                  <el-input v-model="form.department" placeholder="输入部门" @blur="onFieldChange('department', form.department)" />
                 </el-form-item>
               </el-col>
             </el-row>
 
             <el-row :gutter="16">
               <el-col :xs="24" :sm="12">
-                <el-form-item label="IP地址" prop="ip">
-                  <el-input v-model="form.ip" placeholder="输入 IP 地址" />
+                <el-form-item label="IP地址">
+                  <el-input v-model="form.ip" placeholder="输入 IP 地址" @blur="onFieldChange('ip', form.ip)" />
                 </el-form-item>
               </el-col>
               <el-col :xs="24" :sm="12">
-                <el-form-item label="位置" prop="location">
+                <el-form-item label="位置">
                   <el-autocomplete
                     v-model="form.location"
                     :fetch-suggestions="queryLocations"
                     placeholder="输入位置"
                     style="width: 100%;"
+                    @blur="onFieldChange('location', form.location)"
                   />
                 </el-form-item>
               </el-col>
@@ -86,12 +89,12 @@
             <el-row :gutter="16">
               <el-col :xs="24" :sm="12">
                 <el-form-item label="采购日期">
-                  <el-date-picker v-model="form.purchase_date" type="date" style="width: 100%;" />
+                  <el-date-picker v-model="form.purchase_date" type="date" style="width: 100%;" @change="onFieldChange('purchase_date', form.purchase_date)" />
                 </el-form-item>
               </el-col>
               <el-col :xs="24" :sm="12">
                 <el-form-item label="保修到期">
-                  <el-date-picker v-model="form.warranty_until" type="date" style="width: 100%;" />
+                  <el-date-picker v-model="form.warranty_until" type="date" style="width: 100%;" @change="onFieldChange('warranty_until', form.warranty_until)" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -99,7 +102,7 @@
             <el-row :gutter="16">
               <el-col :xs="24" :sm="12">
                 <el-form-item label="资产价值">
-                  <el-input-number v-model="form.value" :min="0" :precision="2" style="width: 100%;" />
+                  <el-input-number v-model="form.value" :min="0" :precision="2" style="width: 100%;" @change="onFieldChange('value', form.value)" />
                 </el-form-item>
               </el-col>
               <el-col :xs="24" :sm="12">
@@ -137,9 +140,8 @@
           <el-button type="success" style="margin-top: 12px;" @click="handleReturn">确认归还</el-button>
         </el-card>
 
-        <!-- 备注系统（追加式，带时间戳） -->
+        <!-- 备注系统 -->
         <el-card header="备注" style="margin-top: 16px;">
-          <!-- 历史备注 -->
           <div v-if="parsedNotes.length" class="notes-history">
             <div v-for="(note, idx) in parsedNotes" :key="idx" class="note-item">
               <div class="note-meta">
@@ -151,7 +153,6 @@
           </div>
           <el-empty v-else description="暂无备注" />
 
-          <!-- 添加新备注 -->
           <div style="margin-top: 16px; display: flex; gap: 8px;">
             <el-input v-model="newNote" placeholder="输入备注内容..." @keyup.enter="addNote" />
             <el-button type="primary" @click="addNote" :disabled="!newNote.trim()">添加</el-button>
@@ -180,7 +181,6 @@
 
       <!-- 右侧：快捷操作 + 图片 -->
       <el-col :xs="24" :sm="8">
-        <!-- 快捷操作 -->
         <el-card header="快捷操作">
           <div class="quick-actions">
             <div class="quick-action-btn" @click="showStatusDialog = true">
@@ -202,7 +202,6 @@
           </div>
         </el-card>
 
-        <!-- 图片（支持拍照/上传 + 压缩） -->
         <el-card header="资产图片" style="margin-top: 16px;">
           <el-image
             v-if="form.image"
@@ -213,7 +212,6 @@
           />
           <el-empty v-if="!form.image && !uploading" description="暂无图片" />
 
-          <!-- 上传按钮 -->
           <div style="margin-top: 12px; display: flex; gap: 8px;">
             <el-upload
               action="#"
@@ -233,13 +231,12 @@
               <el-icon><Delete /></el-icon> 删除
             </el-button>
           </div>
-          <!-- 隐藏的摄像头输入 -->
           <input ref="cameraInput" type="file" accept="image/*" capture="environment" style="display: none;" @change="handleCameraCapture" />
         </el-card>
       </el-col>
     </el-row>
 
-    <!-- 修改状态对话框 -->
+    <!-- 快捷操作对话框 -->
     <el-dialog v-model="showStatusDialog" title="修改状态" width="400px">
       <el-select v-model="quickStatus" style="width: 100%;">
         <el-option v-for="s in statusOptions" :key="s" :label="s" :value="s" />
@@ -250,7 +247,6 @@
       </template>
     </el-dialog>
 
-    <!-- 修改位置对话框 -->
     <el-dialog v-model="showLocationDialog" title="修改位置" width="400px">
       <el-input v-model="quickLocation" placeholder="输入新位置" />
       <template #footer>
@@ -259,7 +255,6 @@
       </template>
     </el-dialog>
 
-    <!-- 借出对话框 -->
     <el-dialog v-model="showBorrowDialog" title="借出" width="400px">
       <el-form label-width="80px">
         <el-form-item label="借用人">
@@ -275,7 +270,6 @@
       </template>
     </el-dialog>
 
-    <!-- 修改负责人对话框 -->
     <el-dialog v-model="showPersonDialog" title="修改负责人" width="400px">
       <el-input v-model="quickPerson" placeholder="输入负责人" />
       <template #footer>
@@ -292,7 +286,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRobotsStore } from '@/stores/robots'
 import { useAuthStore } from '@/stores/auth'
-import { robotRules } from '@/utils/validators'
 import { defaultStatusOptions, statusColors, statusLabels, formatDate, formatDateTime, isOverdue } from '@/utils/format'
 
 const route = useRoute()
@@ -303,7 +296,7 @@ const authStore = useAuthStore()
 const changelog = ref([])
 const loading = ref(false)
 const saving = ref(false)
-const formRef = ref(null)
+const justSaved = ref(false)
 const newNote = ref('')
 const uploading = ref(false)
 const cameraInput = ref(null)
@@ -319,6 +312,7 @@ const defaultForm = {
 }
 
 const form = reactive({ ...defaultForm })
+const original = reactive({ ...defaultForm })
 
 const showStatusDialog = ref(false)
 const quickStatus = ref('')
@@ -329,7 +323,6 @@ const borrowForm = reactive({ borrowed_to: '', return_due: '' })
 const showPersonDialog = ref(false)
 const quickPerson = ref('')
 
-// 解析备注为时间戳格式
 const parsedNotes = computed(() => {
   if (!form.notes) return []
   const lines = form.notes.split('\n').filter(Boolean)
@@ -353,6 +346,7 @@ async function loadRobot() {
   try {
     const robot = await robotsStore.fetchById(route.params.id)
     Object.assign(form, robot)
+    Object.assign(original, robot)
     changelog.value = await robotsStore.fetchChangelog(route.params.id)
   } finally {
     loading.value = false
@@ -373,28 +367,55 @@ function queryLocations(queryString, cb) {
   cb(results)
 }
 
-async function handleSave() {
-  await formRef.value.validate()
+// 字段值比较（处理 null/undefined/空字符串）
+function valuesEqual(a, b) {
+  if (a === b) return true
+  if ((a == null || a === '') && (b == null || b === '')) return true
+  return false
+}
+
+// 字段变化时自动保存
+async function onFieldChange(field, newValue) {
+  if (valuesEqual(newValue, original[field])) return
+
   saving.value = true
+  justSaved.value = false
   try {
-    await robotsStore.updateRobot(route.params.id, form)
-    ElMessage.success('保存成功')
-    loadRobot()
+    await robotsStore.updateRobot(route.params.id, { [field]: newValue })
+    original[field] = newValue
+    justSaved.value = true
+    setTimeout(() => { justSaved.value = false }, 2000)
+    // 刷新变更日志
+    changelog.value = await robotsStore.fetchChangelog(route.params.id)
+    // 刷新 updater 显示
+    const robot = await robotsStore.fetchById(route.params.id)
+    form.updater = robot.updater
+    form.updated_at = robot.updated_at
+    original.updater = robot.updater
+    original.updated_at = robot.updated_at
+  } catch (err) {
+    ElMessage.error('保存失败')
+    // 回滚
+    form[field] = original[field]
   } finally {
     saving.value = false
   }
 }
 
 async function updateField(field, value) {
-  await robotsStore.updateRobot(route.params.id, { [field]: value })
-  ElMessage.success('更新成功')
-  showStatusDialog.value = false
-  showLocationDialog.value = false
-  showPersonDialog.value = false
-  loadRobot()
+  saving.value = true
+  try {
+    await robotsStore.updateRobot(route.params.id, { [field]: value })
+    showStatusDialog.value = false
+    showLocationDialog.value = false
+    showPersonDialog.value = false
+    ElMessage.success('更新成功')
+    await loadRobot()
+  } finally {
+    saving.value = false
+  }
 }
 
-// 添加备注
 async function addNote() {
   if (!newNote.value.trim()) return
 
@@ -415,7 +436,6 @@ async function addNote() {
   loadRobot()
 }
 
-// 图片压缩
 function compressImage(file) {
   return new Promise((resolve) => {
     const reader = new FileReader()
@@ -563,6 +583,22 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.saving-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #e6a23c;
+}
+
+.saved-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #67c23a;
+}
+
 .notes-history {
   max-height: 300px;
   overflow-y: auto;
