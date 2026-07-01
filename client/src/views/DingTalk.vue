@@ -322,7 +322,7 @@ const importStep = ref(0)
 const importForm = reactive({
   document_id: 'MyQA2dXW7ZObXrq5hZjnyDk28zlwrZgb',
   sheet_name: 'WzQTWCb',
-  operator_id: '',
+  operator_id: '16kd04D5P0iPWNQ6iS84ydVwiEiE',
 })
 const importFile = ref(null)
 const importPreview = ref({ preview: [], total: 0 })
