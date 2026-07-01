@@ -1,17 +1,27 @@
 <template>
   <div class="sidebar" :class="{ collapsed, open }">
     <div class="logo">
-      <span class="logo-icon">🤖</span>
-      <span v-if="!collapsed" class="logo-text">资产管理系统</span>
-      <span v-else class="logo-text">AS</span>
+      <div class="logo-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      </div>
+      <div v-if="!collapsed" class="logo-copy">
+        <span class="logo-text">ROBO::TRACK</span>
+        <span class="logo-subtitle">机器人资产管理</span>
+      </div>
     </div>
+
     <el-menu
       :default-active="$route.path"
       :collapse="collapsed"
       router
       background-color="transparent"
-      text-color="rgba(255,255,255,0.7)"
-      active-text-color="#fff"
+      text-color="#647780"
+      active-text-color="#bf573c"
       @select="handleMenuSelect"
     >
       <el-menu-item index="/">
@@ -53,7 +63,7 @@
 <script setup>
 import { useAppStore } from '@/stores/app'
 
-const props = defineProps({
+defineProps({
   collapsed: Boolean,
   open: Boolean,
 })
@@ -61,9 +71,65 @@ const props = defineProps({
 const appStore = useAppStore()
 
 function handleMenuSelect() {
-  // 手机端选择菜单后自动关闭侧边栏
   if (window.innerWidth <= 768) {
     appStore.closeSidebar()
   }
 }
 </script>
+
+<style lang="scss" scoped>
+.sidebar {
+  .logo {
+    padding: 0 18px;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--text-primary);
+    border-radius: 8px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .logo-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .logo-text {
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .logo-subtitle {
+    margin-top: 2px;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  &.collapsed .logo {
+    padding: 0;
+    justify-content: center;
+  }
+
+  &.collapsed .el-menu {
+    padding: 12px 8px;
+
+    .el-menu-item {
+      padding: 0;
+      justify-content: center;
+    }
+  }
+}
+</style>

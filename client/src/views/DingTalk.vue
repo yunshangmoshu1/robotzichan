@@ -97,9 +97,11 @@
                 <el-form-item label="筛选状态">
                   <el-select v-model="syncExportForm.status" clearable placeholder="全部状态">
                     <el-option label="测试中" value="测试中" />
-                    <el-option label="已部署" value="已部署" />
-                    <el-option label="维修中" value="维修中" />
-                    <el-option label="已借出" value="已借出" />
+                    <el-option label="已出库" value="已出库" />
+                    <el-option label="借出中" value="借出中" />
+                    <el-option label="闲置中" value="闲置中" />
+                    <el-option label="展出中" value="展出中" />
+                    <el-option label="返修中" value="返修中" />
                   </el-select>
                 </el-form-item>
                 <el-form-item label="筛选类型">
@@ -224,9 +226,11 @@
             <el-form-item label="筛选状态">
               <el-select v-model="exportForm.status" clearable placeholder="全部状态">
                 <el-option label="测试中" value="测试中" />
-                <el-option label="已部署" value="已部署" />
-                <el-option label="维修中" value="维修中" />
-                <el-option label="已借出" value="已借出" />
+                <el-option label="已出库" value="已出库" />
+                <el-option label="借出中" value="借出中" />
+                <el-option label="闲置中" value="闲置中" />
+                <el-option label="展出中" value="展出中" />
+                <el-option label="返修中" value="返修中" />
               </el-select>
             </el-form-item>
             <el-form-item label="筛选类型">

@@ -9,7 +9,7 @@
 
     <el-row :gutter="24">
       <!-- 状态分布 -->
-      <el-col :span="12">
+        <el-col :xs="24" :lg="12">
         <el-card header="状态分布">
           <div v-for="(count, status) in dashboard.status_counts" :key="status" class="chart-bar">
             <div class="bar-label">{{ statusLabels[status] || status }}</div>
@@ -23,12 +23,12 @@
       </el-col>
 
       <!-- 类型分布 -->
-      <el-col :span="12">
+        <el-col :xs="24" :lg="12">
         <el-card header="类型分布">
           <div v-for="(count, type) in dashboard.type_counts" :key="type" class="chart-bar">
             <div class="bar-label">{{ type }}</div>
             <div class="bar-track">
-              <div class="bar-fill" :style="{ width: pct(count) + '%', background: '#409eff' }"></div>
+              <div class="bar-fill" :style="{ width: pct(count) + '%', background: '#2e7da0' }"></div>
             </div>
             <div class="bar-value">{{ count }}</div>
           </div>
@@ -42,15 +42,15 @@
       <div v-if="trends" class="trends-chart">
         <div v-for="(data, month) in trends" :key="month" class="trend-bar-group">
           <div class="trend-bars">
-            <div class="trend-bar" :style="{ height: barHeight(data.total) + 'px', background: '#409eff' }" :title="`总计: ${data.total}`"></div>
-            <div class="trend-bar" :style="{ height: barHeight(data.status_changes) + 'px', background: '#67c23a' }" :title="`状态变更: ${data.status_changes}`"></div>
+            <div class="trend-bar" :style="{ height: barHeight(data.total) + 'px', background: '#2e7da0' }" :title="`总计: ${data.total}`"></div>
+            <div class="trend-bar" :style="{ height: barHeight(data.status_changes) + 'px', background: '#4f8b6d' }" :title="`状态变更: ${data.status_changes}`"></div>
           </div>
           <div class="trend-label">{{ month.slice(5) }}月</div>
         </div>
       </div>
       <div v-if="trends" style="display: flex; gap: 16px; justify-content: center; margin-top: 12px;">
-        <span style="font-size: 12px; color: #909399;"><span style="display: inline-block; width: 12px; height: 12px; background: #409eff; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>总变更</span>
-        <span style="font-size: 12px; color: #909399;"><span style="display: inline-block; width: 12px; height: 12px; background: #67c23a; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>状态变更</span>
+        <span style="font-size: 12px; color: #909399;"><span style="display: inline-block; width: 12px; height: 12px; background: #2e7da0; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>总变更</span>
+        <span style="font-size: 12px; color: #909399;"><span style="display: inline-block; width: 12px; height: 12px; background: #4f8b6d; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>状态变更</span>
       </div>
       <el-empty v-if="!trends" description="暂无数据" />
     </el-card>
@@ -70,10 +70,17 @@ const trends = ref(null)
 const total = ref(0)
 
 const colorMap = {
-  deployed: '#67c23a',
-  testing: '#409eff',
-  repair: '#e6a23c',
-  borrowed: '#f56c6c',
+  deployed: '#4f8b6d',
+  testing: '#2e7da0',
+  repair: '#c99232',
+  borrowed: '#c95555',
+  '已出库': '#2e7da0',
+  '测试中': '#4f8b6d',
+  '借出中': '#c95555',
+  '闲置中': '#71828c',
+  '展出中': '#8c6fb7',
+  '返修中': '#c99232',
+  '维修中': '#c99232',
 }
 
 function pct(count) {

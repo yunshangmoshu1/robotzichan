@@ -9,6 +9,7 @@ router.use(authenticate);
 
 router.get('/', ctrl.list);
 router.get('/filters', ctrl.getFilterOptions);
+router.get('/filter-options', ctrl.getFilterOptions);
 router.get('/barcode/:code', ctrl.getByBarcode);
 router.get('/:id', ctrl.getById);
 router.get('/:id/changelog', ctrl.getChangelog);

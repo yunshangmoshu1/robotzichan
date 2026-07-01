@@ -1,7 +1,7 @@
 <template>
   <div class="app-layout">
-    <div class="sidebar-overlay" @click="appStore.closeSidebar" />
     <Sidebar :collapsed="appStore.sidebarCollapsed" :open="appStore.sidebarOpen" />
+    <div class="sidebar-overlay" @click="appStore.closeSidebar" />
     <div class="main-area">
       <Header @toggle-sidebar="appStore.toggleSidebar" />
       <div class="content">
@@ -39,7 +39,6 @@ const appStore = useAppStore()
     transition: opacity 0.3s;
   }
 
-  .sidebar.open ~ .sidebar-overlay,
   .sidebar.open + .sidebar-overlay {
     opacity: 1;
     pointer-events: auto;

@@ -146,7 +146,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useScanner } from '@/composables/useScanner'
 import { robotsApi } from '@/api/robots'
-import { statusColors, statusLabels } from '@/utils/format'
+import { defaultStatusOptions, statusColors, statusLabels } from '@/utils/format'
 
 const router = useRouter()
 const { isScanning, error: scanError, startScanner, stopScanner } = useScanner()
@@ -157,7 +157,7 @@ const searched = ref(false)
 const selectedRobotId = ref(null)
 const scanHistory = ref([])
 
-const statusOptions = ['测试中', '已部署', '维修中', '已借出']
+const statusOptions = defaultStatusOptions
 const showStatusDialog = ref(false)
 const quickStatus = ref('')
 const showLocationDialog = ref(false)
@@ -276,7 +276,7 @@ async function applyLocationChange() {
 
 async function applyBorrow() {
   await robotsApi.update(selectedRobotId.value, {
-    status: '已借出',
+    status: '借出中',
     borrowed: true,
     borrowed_to: borrowForm.borrowed_to,
     borrowed_at: new Date().toISOString(),

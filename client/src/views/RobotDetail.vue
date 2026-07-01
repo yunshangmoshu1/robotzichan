@@ -204,7 +204,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRobotsStore } from '@/stores/robots'
 import { useAuthStore } from '@/stores/auth'
-import { statusColors, statusLabels, formatDate, formatDateTime, isOverdue } from '@/utils/format'
+import { defaultStatusOptions, statusColors, statusLabels, formatDate, formatDateTime, isOverdue } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -218,7 +218,7 @@ const newNote = ref('')
 const uploading = ref(false)
 const cameraInput = ref(null)
 
-const statusOptions = ['测试中', '已部署', '维修中', '已借出']
+const statusOptions = defaultStatusOptions
 const showStatusDialog = ref(false)
 const quickStatus = ref('')
 const showLocationDialog = ref(false)
@@ -395,7 +395,7 @@ async function removeImage() {
 
 async function handleBorrow() {
   await robotsStore.updateRobot(route.params.id, {
-    status: '已借出',
+    status: '借出中',
     borrowed: true,
     borrowed_to: borrowForm.borrowed_to,
     borrowed_at: new Date().toISOString(),

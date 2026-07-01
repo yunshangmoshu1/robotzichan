@@ -270,7 +270,10 @@ exports.batchImport = async (req, res) => {
         new_value: `导入/更新 ${r.type} ${r.serial}`,
         changed_by: req.user?.display_name || '批量导入',
       }));
-      await supabase.from('change_log').insert(logs).catch(() => {});
+      const { error: logError } = await supabase.from('change_log').insert(logs);
+      if (logError) {
+        console.warn('批量导入变更日志写入失败:', logError.message);
+      }
     }
 
     res.json({ data, imported: data.length });

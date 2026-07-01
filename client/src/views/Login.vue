@@ -1,56 +1,84 @@
 <template>
   <div class="login-page">
-    <div class="login-left">
-      <div class="brand-content">
-        <div class="robot-icon">🤖</div>
-        <h1>资产管理系统</h1>
-        <p class="tagline">智能机器人资产管理平台</p>
-        <div class="features">
-          <div class="feature-item">
-            <span class="feature-icon">📊</span>
-            <span>资产追踪管理</span>
-          </div>
-          <div class="feature-item">
-            <span class="feature-icon">📱</span>
-            <span>扫码快速识别</span>
-          </div>
-          <div class="feature-item">
-            <span class="feature-icon">🔄</span>
-            <span>钉钉数据同步</span>
-          </div>
-        </div>
+    <section class="login-panel" aria-label="登录">
+      <div class="brand-mark">
+        <span class="mark-grid">
+          <span />
+          <span />
+          <span />
+          <span />
+        </span>
+        <span>ROBO::TRACK</span>
       </div>
-    </div>
-    <div class="login-right">
+
       <div class="login-card">
-        <div class="card-header">
-          <h2>欢迎登录</h2>
-          <p>请输入您的账号密码</p>
-        </div>
-        <el-form ref="formRef" :model="form" :rules="loginRules" @submit.prevent="handleLogin">
+        <p class="eyebrow">资产管理系统</p>
+        <h1>欢迎回来</h1>
+        <p class="subtext">登录后查看机器人资产、盘点和钉钉同步状态。</p>
+
+        <el-form
+          ref="formRef"
+          :model="form"
+          :rules="loginRules"
+          @submit.prevent="handleLogin"
+          size="large"
+        >
           <el-form-item prop="username">
-            <el-input v-model="form.username" placeholder="用户名" size="large" prefix-icon="User" />
+            <el-input
+              v-model="form.username"
+              placeholder="用户名"
+              prefix-icon="User"
+              clearable
+            />
           </el-form-item>
+
           <el-form-item prop="password">
-            <el-input v-model="form.password" placeholder="密码" type="password" size="large" show-password prefix-icon="Lock" @keyup.enter="handleLogin" />
+            <el-input
+              v-model="form.password"
+              placeholder="密码"
+              type="password"
+              show-password
+              prefix-icon="Lock"
+              @keyup.enter="handleLogin"
+            />
           </el-form-item>
-          <el-form-item>
-            <el-button type="primary" size="large" style="width: 100%" :loading="loading" @click="handleLogin">
-              登 录
-            </el-button>
-          </el-form-item>
+
+          <el-button
+            type="primary"
+            class="login-btn"
+            :loading="loading"
+            @click="handleLogin"
+          >
+            {{ loading ? '登录中...' : '登录' }}
+          </el-button>
         </el-form>
-        <div class="card-footer">
-          <p>默认账号：admin / admin123</p>
+
+        <div class="login-hint">
+          <el-icon><InfoFilled /></el-icon>
+          <span>默认账号：admin / admin123</span>
         </div>
       </div>
-    </div>
+
+      <div class="login-footer">
+        <span>机器人资产数据中心</span>
+        <span>v2.0</span>
+      </div>
+    </section>
+
+    <section class="visual-panel" aria-label="机器人生态">
+      <img src="/images/robot-ecosystem.jpg" alt="机器人生态展示" />
+      <div class="visual-caption">
+        <span class="caption-kicker">Robot Operations</span>
+        <h2>从入库到盘点，保持资产状态清楚可见。</h2>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { InfoFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { loginRules } from '@/utils/validators'
 import { ElMessage } from 'element-plus'
@@ -69,7 +97,7 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     router.push('/')
   } catch (err) {
-    // 错误已在 api 拦截器中处理
+    // 错误已在 API 拦截器中处理
   } finally {
     loading.value = false
   }
@@ -79,226 +107,212 @@ async function handleLogin() {
 <style lang="scss" scoped>
 .login-page {
   min-height: 100vh;
-  display: flex;
-  background: #f0f2f5;
+  display: grid;
+  grid-template-columns: minmax(420px, 0.42fr) minmax(0, 0.58fr);
+  background: #f4f7f8;
 }
 
-.login-left {
-  flex: 1;
-  background: linear-gradient(135deg, #1a1b2e 0%, #2d2e3e 100%);
+.login-panel {
   display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 42px 56px 34px;
+  background: #fbfcfc;
+  border-right: 1px solid #dfe7ea;
+}
+
+.brand-mark {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 60px;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(232, 85, 58, 0.1) 0%, transparent 50%);
-    animation: pulse 8s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-  }
+  gap: 12px;
+  width: fit-content;
+  color: #1f2f3a;
+  font-size: 15px;
+  font-weight: 700;
 }
 
-.brand-content {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  color: #fff;
+.mark-grid {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #b9cbd3;
+  border-radius: 8px;
 
-  .robot-icon {
-    font-size: 80px;
-    margin-bottom: 24px;
-    animation: float 3s ease-in-out infinite;
+  span {
+    background: #e46f4d;
+    border-radius: 3px;
   }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-
-  h1 {
-    font-size: 36px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    background: linear-gradient(90deg, #fff 0%, #ff7a5c 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .tagline {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 40px;
-  }
-
-  .features {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    text-align: left;
-  }
-
-  .feature-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    backdrop-filter: blur(10px);
-
-    .feature-icon {
-      font-size: 20px;
-    }
-
-    span:last-child {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.9);
-    }
-  }
-}
-
-.login-right {
-  width: 480px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px;
-  background: #fff;
 }
 
 .login-card {
   width: 100%;
   max-width: 360px;
+  margin: 54px 0;
+}
 
-  .card-header {
-    text-align: center;
-    margin-bottom: 40px;
+.eyebrow {
+  color: #e46f4d;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+h1 {
+  color: #1f2f3a;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.subtext {
+  color: #6d7b84;
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+:deep(.el-input__wrapper) {
+  min-height: 44px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #d8e2e7 inset;
+  padding: 0 14px;
+
+  &:hover {
+    box-shadow: 0 0 0 1px #b9cbd3 inset;
+  }
+
+  &.is-focus {
+    box-shadow: 0 0 0 1px #e46f4d inset;
+  }
+}
+
+.login-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.login-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: #72818a;
+  font-size: 13px;
+}
+
+.login-footer {
+  display: flex;
+  justify-content: space-between;
+  color: #8a989f;
+  font-size: 12px;
+}
+
+.visual-panel {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #eaf1f4;
+
+  img {
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    object-fit: cover;
+    object-position: 68% center;
+    display: block;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(244, 247, 248, 0.12), rgba(244, 247, 248, 0) 35%),
+      linear-gradient(0deg, rgba(23, 38, 48, 0.18), rgba(23, 38, 48, 0) 42%);
+    pointer-events: none;
+  }
+}
+
+.visual-caption {
+  position: absolute;
+  left: 42px;
+  bottom: 36px;
+  max-width: 420px;
+  color: #fff;
+  z-index: 1;
+
+  .caption-kicker {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  h2 {
+    font-size: 24px;
+    line-height: 1.35;
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 960px) {
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+
+  .visual-panel {
+    min-height: 260px;
+
+    img {
+      min-height: 260px;
+      object-position: 58% center;
+    }
+  }
+
+  .login-panel {
+    border-right: none;
+    padding: 32px 28px;
+  }
+
+  .login-card {
+    max-width: none;
+    margin: 42px 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-panel {
+    padding: 26px 20px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+
+  .visual-caption {
+    left: 24px;
+    right: 24px;
+    bottom: 24px;
 
     h2 {
-      font-size: 28px;
-      font-weight: 600;
-      color: #1a1b2e;
-      margin-bottom: 8px;
-    }
-
-    p {
-      color: #909399;
-      font-size: 14px;
+      font-size: 20px;
     }
   }
 
-  :deep(.el-input__wrapper) {
-    border-radius: 8px;
-    box-shadow: 0 0 0 1px #dcdfe6 inset;
+  .visual-panel {
+    min-height: 220px;
 
-    &:hover {
-      box-shadow: 0 0 0 1px #e8553a inset;
-    }
-
-    &.is-focus {
-      box-shadow: 0 0 0 1px #e8553a inset;
-    }
-  }
-
-  :deep(.el-button--primary) {
-    background: linear-gradient(135deg, #e8553a 0%, #ff7a5c 100%);
-    border: none;
-    border-radius: 8px;
-    height: 48px;
-    font-size: 16px;
-    font-weight: 500;
-
-    &:hover {
-      background: linear-gradient(135deg, #c4432b 0%, #e8553a 100%);
-    }
-  }
-
-  .card-footer {
-    text-align: center;
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid #ebeef5;
-
-    p {
-      font-size: 12px;
-      color: #909399;
-    }
-  }
-}
-
-@media (max-width: 900px) {
-  .login-page {
-    flex-direction: column;
-  }
-
-  .login-left {
-    padding: 40px 20px;
-    min-height: 200px;
-  }
-
-  .brand-content {
-    .robot-icon {
-      font-size: 48px;
-    }
-
-    h1 {
-      font-size: 24px;
-    }
-
-    .tagline {
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-
-    .features {
-      display: none;
-    }
-  }
-
-  .login-right {
-    width: 100%;
-    padding: 40px 20px;
-  }
-
-  .login-card {
-    .card-header {
-      h2 {
-        font-size: 24px;
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .login-left {
-    padding: 30px 16px;
-    min-height: 160px;
-  }
-
-  .login-right {
-    padding: 30px 16px;
-  }
-
-  .login-card {
-    .card-header {
-      margin-bottom: 24px;
-
-      h2 {
-        font-size: 20px;
-      }
+    img {
+      min-height: 220px;
     }
   }
 }

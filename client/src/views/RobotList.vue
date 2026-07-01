@@ -78,7 +78,7 @@
         <el-table-column prop="location" label="位置" sortable="custom" min-width="120" />
         <el-table-column prop="department" label="部门" min-width="100" />
         <el-table-column prop="updated_at" label="更新时间" width="160" :formatter="(_, __, val) => formatDateTime(val)" />
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="90">
           <template #default="{ row }">
             <el-button link type="primary" @click="$router.push(`/robots/${row.id}`)">详情</el-button>
           </template>

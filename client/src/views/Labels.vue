@@ -14,7 +14,7 @@
         </el-col>
         <el-col :span="6">
           <el-select v-model="statusFilter" placeholder="全部状态" clearable @change="updateList">
-            <el-option label="排除已部署" value="!已部署" />
+            <el-option label="排除已出库" value="!已出库" />
             <el-option v-for="s in statuses" :key="s" :label="s" :value="s" />
           </el-select>
         </el-col>
@@ -29,7 +29,7 @@
       </el-row>
 
       <!-- 机器人列表 -->
-      <el-table :data="filteredRobots" stripe max-height="400" style="margin-top: 12px;" @selection-change="handleSelectionChange">
+      <el-table ref="tableRef" :data="filteredRobots" stripe max-height="400" style="margin-top: 12px;" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="50" />
         <el-table-column prop="type" label="类型" />
         <el-table-column prop="serial" label="序列号" />
@@ -68,6 +68,7 @@ const statuses = ref([])
 const typeFilter = ref('')
 const statusFilter = ref('')
 const selectedIds = ref([])
+const tableRef = ref(null)
 const generatedLabels = ref([])
 const labelsGenerated = ref(false)
 const labelsContainer = ref(null)
@@ -75,8 +76,8 @@ const labelsContainer = ref(null)
 const filteredRobots = computed(() => {
   return robots.value.filter(r => {
     if (typeFilter.value && r.type !== typeFilter.value) return false
-    if (statusFilter.value === '!已部署' && r.status === '已部署') return false
-    if (statusFilter.value && statusFilter.value !== '!已部署' && r.status !== statusFilter.value) return false
+    if (statusFilter.value === '!已出库' && r.status === '已出库') return false
+    if (statusFilter.value && statusFilter.value !== '!已出库' && r.status !== statusFilter.value) return false
     return true
   })
 })
@@ -88,10 +89,11 @@ function handleSelectionChange(rows) {
 }
 
 function toggleSelectAll() {
-  // This is a simplified toggle - in real use you'd call table's toggleAllSelection
   if (selectedIds.value.length === filteredRobots.value.length) {
+    tableRef.value?.clearSelection()
     selectedIds.value = []
   } else {
+    filteredRobots.value.forEach(row => tableRef.value?.toggleRowSelection(row, true))
     selectedIds.value = filteredRobots.value.map(r => r.id)
   }
 }

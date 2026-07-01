@@ -12,7 +12,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="类型" prop="type">
-              <el-select v-model="form.type" filterable allow-create placeholder="选择或输入类型" style="width: 100%;">
+              <el-select v-model="form.type" filterable allow-create default-first-option placeholder="选择或输入类型" style="width: 100%;">
                 <el-option v-for="t in filterOptions.types" :key="t" :label="t" :value="t" />
               </el-select>
             </el-form-item>
@@ -33,7 +33,7 @@
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-select v-model="form.status" style="width: 100%;">
-                <el-option v-for="s in filterOptions.statuses" :key="s" :label="s" :value="s" />
+                <el-option v-for="s in statusOptions" :key="s" :label="s" :value="s" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -111,6 +111,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useRobotsStore } from '@/stores/robots'
 import { robotRules } from '@/utils/validators'
+import { defaultStatusOptions } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -120,6 +121,7 @@ const isEdit = computed(() => !!route.params.id)
 const formRef = ref(null)
 const saving = ref(false)
 const filterOptions = ref({ types: [], statuses: [], locations: [], persons: [] })
+const statusOptions = computed(() => filterOptions.value.statuses?.length ? filterOptions.value.statuses : defaultStatusOptions)
 
 const defaultForm = {
   type: '', serial: '', barcode: '', status: '测试中',

@@ -207,7 +207,7 @@ onMounted(() => {
     fieldOptions.value = JSON.parse(fieldSaved)
   } else {
     fieldOptions.value = {
-      statuses: ['测试中', '已部署', '维修中', '已借出'],
+      statuses: ['已出库', '测试中', '借出中', '闲置中', '展出中', '返修中'],
       types: ['small hi', 'pi', 'Pi plus V2.0.0', 'Pi plus pro V2.0.0'],
     }
   }
