@@ -407,6 +407,32 @@ body {
     width: 92% !important;
     margin: 0 auto;
   }
+
+  .scanner-container {
+    max-width: 100%;
+
+    #scanner-reader {
+      min-height: 250px;
+    }
+  }
+
+  .quick-actions {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .quick-action-btn {
+    padding: 12px 8px;
+
+    span {
+      font-size: 11px;
+    }
+  }
+
+  .scan-history-item {
+    font-size: 12px;
+    padding: 6px 0;
+  }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {

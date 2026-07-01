@@ -5,7 +5,7 @@
     </div>
 
     <el-row :gutter="24">
-      <el-col :span="12">
+      <el-col :xs="24" :sm="12">
         <el-card>
           <template #header>
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -33,7 +33,7 @@
         </el-card>
       </el-col>
 
-      <el-col :span="12">
+      <el-col :xs="24" :sm="12">
         <!-- 扫描结果 -->
         <div v-if="scanResult">
           <!-- 找到单个资产 -->

@@ -12,12 +12,19 @@ export function useScanner() {
       error.value = null
       scanner.value = new Html5Qrcode(containerId)
 
+      // 根据容器实际宽度动态计算扫描框大小
+      const container = document.getElementById(containerId)
+      const containerWidth = container ? container.offsetWidth : 300
+      const scanSize = Math.min(Math.floor(containerWidth * 0.85), 500)
+
       await scanner.value.start(
         { facingMode: 'environment' },
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
+          fps: 15,
+          qrbox: { width: scanSize, height: scanSize },
           aspectRatio: 1.0,
+          disableFlip: false,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         },
         (decodedText) => {
           lastResult.value = decodedText
