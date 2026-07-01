@@ -258,6 +258,11 @@ async function handleLogin() {
       font-size: 24px;
     }
 
+    .tagline {
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
     .features {
       display: none;
     }
@@ -266,6 +271,35 @@ async function handleLogin() {
   .login-right {
     width: 100%;
     padding: 40px 20px;
+  }
+
+  .login-card {
+    .card-header {
+      h2 {
+        font-size: 24px;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .login-left {
+    padding: 30px 16px;
+    min-height: 160px;
+  }
+
+  .login-right {
+    padding: 30px 16px;
+  }
+
+  .login-card {
+    .card-header {
+      margin-bottom: 24px;
+
+      h2 {
+        font-size: 20px;
+      }
+    }
   }
 }
 </style>

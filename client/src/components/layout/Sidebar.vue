@@ -1,5 +1,5 @@
 <template>
-  <div class="sidebar" :class="{ collapsed }">
+  <div class="sidebar" :class="{ collapsed, open }">
     <div class="logo">
       <span class="logo-icon">🤖</span>
       <span v-if="!collapsed" class="logo-text">资产管理系统</span>
@@ -12,6 +12,7 @@
       background-color="transparent"
       text-color="rgba(255,255,255,0.7)"
       active-text-color="#fff"
+      @select="handleMenuSelect"
     >
       <el-menu-item index="/">
         <el-icon><DataBoard /></el-icon>
@@ -50,7 +51,19 @@
 </template>
 
 <script setup>
-defineProps({
+import { useAppStore } from '@/stores/app'
+
+const props = defineProps({
   collapsed: Boolean,
+  open: Boolean,
 })
+
+const appStore = useAppStore()
+
+function handleMenuSelect() {
+  // 手机端选择菜单后自动关闭侧边栏
+  if (window.innerWidth <= 768) {
+    appStore.closeSidebar()
+  }
+}
 </script>

@@ -2,10 +2,26 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#e8553a" />
   <title>资产管理系统</title>
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/png" href="/icon-192.png" />
+  <style>
+    /* 禁用移动端长按菜单 */
+    * {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    /* 允许输入框选择 */
+    input, textarea {
+      -webkit-user-select: auto;
+      user-select: auto;
+    }
+  </style>
 </head>
 <body>
   <div id="app"></div>
