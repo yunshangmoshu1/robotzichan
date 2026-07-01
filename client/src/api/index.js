@@ -2,8 +2,11 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
+// 根据环境设置 API 基础地址
+const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   timeout: 30000,
 })
 
