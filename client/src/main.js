@@ -17,6 +17,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 
 app.use(pinia)
 app.use(router)
-app.use(ElementPlus, { locale: 'zh-cn' })
+app.use(ElementPlus, {
+  locale: 'zh-cn',
+  size: 'default',
+})
 
 app.mount('#app')

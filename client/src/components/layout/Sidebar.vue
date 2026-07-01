@@ -1,16 +1,17 @@
 <template>
   <div class="sidebar" :class="{ collapsed }">
     <div class="logo">
-      <span v-if="!collapsed">ROBO::TRACK</span>
-      <span v-else>RT</span>
+      <span class="logo-icon">🤖</span>
+      <span v-if="!collapsed" class="logo-text">资产管理系统</span>
+      <span v-else class="logo-text">AS</span>
     </div>
     <el-menu
       :default-active="$route.path"
       :collapse="collapsed"
       router
       background-color="transparent"
-      text-color="#bfcbd9"
-      active-text-color="#409eff"
+      text-color="rgba(255,255,255,0.7)"
+      active-text-color="#fff"
     >
       <el-menu-item index="/">
         <el-icon><DataBoard /></el-icon>
