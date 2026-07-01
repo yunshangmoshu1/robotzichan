@@ -25,20 +25,18 @@ export function useScanner() {
         ],
       })
 
-      // 根据容器实际宽度动态计算扫描框大小（横向更宽，适配条形码）
+      // 根据容器实际宽度动态计算扫描框大小
       const container = document.getElementById(containerId)
       const containerWidth = container ? container.offsetWidth : 300
-      const scanWidth = Math.min(Math.floor(containerWidth * 0.9), 500)
-      const scanHeight = Math.floor(scanWidth * 0.5)
+      const scanSize = Math.min(Math.floor(containerWidth * 0.9), 500)
 
       await scanner.value.start(
         { facingMode: 'environment' },
         {
           fps: 15,
-          qrbox: { width: scanWidth, height: scanHeight },
-          aspectRatio: 1.5,
+          qrbox: { width: scanSize, height: scanSize },
+          aspectRatio: 1.0,
           disableFlip: false,
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         },
         (decodedText) => {
           lastResult.value = decodedText

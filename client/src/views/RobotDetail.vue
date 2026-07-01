@@ -3,47 +3,135 @@
     <div class="page-header">
       <div style="display: flex; align-items: center; gap: 16px;">
         <el-button @click="$router.back()" text><el-icon><ArrowLeft /></el-icon> 返回</el-button>
-        <h2>{{ robot.type }} - {{ robot.serial }}</h2>
-        <el-tag :type="statusColors[robot.status]">{{ statusLabels[robot.status] || robot.status }}</el-tag>
+        <h2>{{ form.type }} - {{ form.serial }}</h2>
+        <el-tag :type="statusColors[form.status]">{{ statusLabels[form.status] || form.status }}</el-tag>
       </div>
       <div>
-        <el-button type="primary" @click="$router.push(`/robots/${robot.id}/edit`)">编辑</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
         <el-button type="danger" @click="handleDelete">删除</el-button>
       </div>
     </div>
 
     <el-row :gutter="24">
-      <!-- 基本信息 -->
-      <el-col :span="16">
+      <!-- 基本信息（可编辑表单） -->
+      <el-col :xs="24" :sm="16">
         <el-card header="基本信息">
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="类型">{{ robot.type }}</el-descriptions-item>
-            <el-descriptions-item label="序列号">{{ robot.serial }}</el-descriptions-item>
-            <el-descriptions-item label="条形码">{{ robot.barcode || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="状态">
-              <el-tag :type="statusColors[robot.status]">{{ statusLabels[robot.status] || robot.status }}</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="负责人">{{ robot.person || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="部门">{{ robot.department || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="IP地址">{{ robot.ip || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="位置">{{ robot.location || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="采购日期">{{ formatDate(robot.purchase_date) }}</el-descriptions-item>
-            <el-descriptions-item label="保修到期">{{ formatDate(robot.warranty_until) }}</el-descriptions-item>
-            <el-descriptions-item label="资产价值">{{ robot.value ? `¥${robot.value}` : '-' }}</el-descriptions-item>
-            <el-descriptions-item label="最后操作人">{{ robot.updater || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ formatDateTime(robot.created_at) }}</el-descriptions-item>
-            <el-descriptions-item label="更新时间">{{ formatDateTime(robot.updated_at) }}</el-descriptions-item>
-          </el-descriptions>
+          <el-form ref="formRef" :model="form" :rules="robotRules" label-width="90px">
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="类型" prop="type">
+                  <el-select v-model="form.type" filterable allow-create default-first-option placeholder="选择或输入类型" style="width: 100%;">
+                    <el-option v-for="t in filterOptions.types" :key="t" :label="t" :value="t" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="序列号" prop="serial">
+                  <el-input v-model="form.serial" placeholder="输入序列号" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="条形码" prop="barcode">
+                  <el-input v-model="form.barcode" placeholder="输入条形码数字" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="状态" prop="status">
+                  <el-select v-model="form.status" style="width: 100%;">
+                    <el-option v-for="s in statusOptions" :key="s" :label="s" :value="s" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="负责人" prop="person">
+                  <el-autocomplete
+                    v-model="form.person"
+                    :fetch-suggestions="queryPersons"
+                    placeholder="输入负责人"
+                    style="width: 100%;"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="部门" prop="department">
+                  <el-input v-model="form.department" placeholder="输入部门" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="IP地址" prop="ip">
+                  <el-input v-model="form.ip" placeholder="输入 IP 地址" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="位置" prop="location">
+                  <el-autocomplete
+                    v-model="form.location"
+                    :fetch-suggestions="queryLocations"
+                    placeholder="输入位置"
+                    style="width: 100%;"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="采购日期">
+                  <el-date-picker v-model="form.purchase_date" type="date" style="width: 100%;" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="保修到期">
+                  <el-date-picker v-model="form.warranty_until" type="date" style="width: 100%;" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="资产价值">
+                  <el-input-number v-model="form.value" :min="0" :precision="2" style="width: 100%;" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="最后操作人">
+                  <el-input :model-value="form.updater" disabled />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="创建时间">
+                  <el-input :model-value="formatDateTime(form.created_at)" disabled />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="12">
+                <el-form-item label="更新时间">
+                  <el-input :model-value="formatDateTime(form.updated_at)" disabled />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
         </el-card>
 
         <!-- 借还信息 -->
-        <el-card v-if="robot.borrowed" header="借出信息" style="margin-top: 16px;">
+        <el-card v-if="form.borrowed" header="借出信息" style="margin-top: 16px;">
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="借用人">{{ robot.borrowed_to }}</el-descriptions-item>
-            <el-descriptions-item label="借出时间">{{ formatDateTime(robot.borrowed_at) }}</el-descriptions-item>
+            <el-descriptions-item label="借用人">{{ form.borrowed_to }}</el-descriptions-item>
+            <el-descriptions-item label="借出时间">{{ formatDateTime(form.borrowed_at) }}</el-descriptions-item>
             <el-descriptions-item label="预计归还">
-              {{ formatDate(robot.return_due) }}
-              <el-tag v-if="isOverdue(robot.return_due)" type="danger" size="small" style="margin-left: 8px;">已逾期</el-tag>
+              {{ formatDate(form.return_due) }}
+              <el-tag v-if="isOverdue(form.return_due)" type="danger" size="small" style="margin-left: 8px;">已逾期</el-tag>
             </el-descriptions-item>
           </el-descriptions>
           <el-button type="success" style="margin-top: 12px;" @click="handleReturn">确认归还</el-button>
@@ -91,7 +179,7 @@
       </el-col>
 
       <!-- 右侧：快捷操作 + 图片 -->
-      <el-col :span="8">
+      <el-col :xs="24" :sm="8">
         <!-- 快捷操作 -->
         <el-card header="快捷操作">
           <div class="quick-actions">
@@ -117,13 +205,13 @@
         <!-- 图片（支持拍照/上传 + 压缩） -->
         <el-card header="资产图片" style="margin-top: 16px;">
           <el-image
-            v-if="robot.image"
-            :src="robot.image"
+            v-if="form.image"
+            :src="form.image"
             fit="contain"
             style="width: 100%; max-height: 300px; border-radius: 8px;"
-            :preview-src-list="[robot.image]"
+            :preview-src-list="[form.image]"
           />
-          <el-empty v-if="!robot.image && !uploading" description="暂无图片" />
+          <el-empty v-if="!form.image && !uploading" description="暂无图片" />
 
           <!-- 上传按钮 -->
           <div style="margin-top: 12px; display: flex; gap: 8px;">
@@ -141,7 +229,7 @@
             <el-button size="small" :loading="uploading" @click="captureCamera">
               <el-icon><Camera /></el-icon> 拍照
             </el-button>
-            <el-button v-if="robot.image" size="small" type="danger" @click="removeImage">
+            <el-button v-if="form.image" size="small" type="danger" @click="removeImage">
               <el-icon><Delete /></el-icon> 删除
             </el-button>
           </div>
@@ -204,6 +292,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRobotsStore } from '@/stores/robots'
 import { useAuthStore } from '@/stores/auth'
+import { robotRules } from '@/utils/validators'
 import { defaultStatusOptions, statusColors, statusLabels, formatDate, formatDateTime, isOverdue } from '@/utils/format'
 
 const route = useRoute()
@@ -211,14 +300,26 @@ const router = useRouter()
 const robotsStore = useRobotsStore()
 const authStore = useAuthStore()
 
-const robot = ref({})
 const changelog = ref([])
 const loading = ref(false)
+const saving = ref(false)
+const formRef = ref(null)
 const newNote = ref('')
 const uploading = ref(false)
 const cameraInput = ref(null)
+const filterOptions = ref({ types: [], statuses: [], locations: [], persons: [] })
+const statusOptions = computed(() => filterOptions.value.statuses?.length ? filterOptions.value.statuses : defaultStatusOptions)
 
-const statusOptions = defaultStatusOptions
+const defaultForm = {
+  type: '', serial: '', barcode: '', status: '测试中',
+  person: '', department: '', ip: '', location: '',
+  purchase_date: null, warranty_until: null, value: null,
+  updater: '', created_at: '', updated_at: '', image: '',
+  borrowed: false, borrowed_to: '', borrowed_at: '', return_due: '',
+}
+
+const form = reactive({ ...defaultForm })
+
 const showStatusDialog = ref(false)
 const quickStatus = ref('')
 const showLocationDialog = ref(false)
@@ -228,26 +329,59 @@ const borrowForm = reactive({ borrowed_to: '', return_due: '' })
 const showPersonDialog = ref(false)
 const quickPerson = ref('')
 
-// 解析备注为时间戳格式：[2024-01-01 12:00 张三] 备注内容
+// 解析备注为时间戳格式
 const parsedNotes = computed(() => {
-  if (!robot.value.notes) return []
-  const lines = robot.value.notes.split('\n').filter(Boolean)
+  if (!form.notes) return []
+  const lines = form.notes.split('\n').filter(Boolean)
   return lines.map(line => {
     const match = line.match(/^\[([^\]]+)\s+([^\]]+)\]\s*(.*)$/)
     if (match) {
       return { time: match[1], user: match[2], content: match[3] }
     }
     return { time: '', user: '', content: line }
-  }).reverse() // 最新的在上面
+  }).reverse()
 })
+
+async function loadFilterOptions() {
+  try {
+    filterOptions.value = await robotsStore.fetchFilterOptions()
+  } catch (e) { /* ignore */ }
+}
 
 async function loadRobot() {
   loading.value = true
   try {
-    robot.value = await robotsStore.fetchById(route.params.id)
+    const robot = await robotsStore.fetchById(route.params.id)
+    Object.assign(form, robot)
     changelog.value = await robotsStore.fetchChangelog(route.params.id)
   } finally {
     loading.value = false
+  }
+}
+
+function queryPersons(queryString, cb) {
+  const results = filterOptions.value.persons
+    .map(p => ({ value: p }))
+    .filter(item => !queryString || item.value.includes(queryString))
+  cb(results)
+}
+
+function queryLocations(queryString, cb) {
+  const results = filterOptions.value.locations
+    .map(l => ({ value: l }))
+    .filter(item => !queryString || item.value.includes(queryString))
+  cb(results)
+}
+
+async function handleSave() {
+  await formRef.value.validate()
+  saving.value = true
+  try {
+    await robotsStore.updateRobot(route.params.id, form)
+    ElMessage.success('保存成功')
+    loadRobot()
+  } finally {
+    saving.value = false
   }
 }
 
@@ -260,7 +394,7 @@ async function updateField(field, value) {
   loadRobot()
 }
 
-// 添加备注（追加式，带时间戳和操作人）
+// 添加备注
 async function addNote() {
   if (!newNote.value.trim()) return
 
@@ -272,7 +406,7 @@ async function addNote() {
   const user = authStore.displayName || '未知'
   const noteEntry = `[${timeStr} ${user}] ${newNote.value.trim()}`
 
-  const oldNotes = robot.value.notes || ''
+  const oldNotes = form.notes || ''
   const updatedNotes = oldNotes ? `${oldNotes}\n${noteEntry}` : noteEntry
 
   await robotsStore.updateRobot(route.params.id, { notes: updatedNotes })
@@ -281,7 +415,7 @@ async function addNote() {
   loadRobot()
 }
 
-// 图片压缩（最大 800px，70% JPEG 质量）
+// 图片压缩
 function compressImage(file) {
   return new Promise((resolve) => {
     const reader = new FileReader()
@@ -318,15 +452,13 @@ function compressImage(file) {
   })
 }
 
-// 上传图片到 Supabase Storage 或转为 base64
 async function uploadImage(blob) {
-  // 先尝试通过后端 API 上传
   try {
     const formData = new FormData()
-    formData.append('image', blob, `${robot.value.id}_${Date.now()}.jpg`)
+    formData.append('image', blob, `${form.id}_${Date.now()}.jpg`)
 
     const token = localStorage.getItem('token')
-    const resp = await fetch('/api/robots/' + robot.value.id + '/image', {
+    const resp = await fetch('/api/robots/' + form.id + '/image', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: formData,
@@ -340,7 +472,6 @@ async function uploadImage(blob) {
     // 后端不支持，降级为 base64
   }
 
-  // 降级：转为 base64 存储在数据库中
   return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result)
@@ -382,7 +513,7 @@ async function handleCameraCapture(event) {
     ElMessage.error('图片上传失败')
   } finally {
     uploading.value = false
-    event.target.value = '' // 重置 input
+    event.target.value = ''
   }
 }
 
@@ -425,7 +556,10 @@ async function handleDelete() {
   router.push('/robots')
 }
 
-onMounted(loadRobot)
+onMounted(() => {
+  loadFilterOptions()
+  loadRobot()
+})
 </script>
 
 <style scoped>
