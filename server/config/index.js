@@ -18,5 +18,6 @@ module.exports = {
     appSecret: process.env.DINGTALK_APP_SECRET,
     agentId: process.env.DINGTALK_AGENT_ID,
     webhookUrl: process.env.DINGTALK_WEBHOOK_URL,
+    operatorId: process.env.DINGTALK_OPERATOR_ID || process.env.DINGTALK_UNION_ID,
   },
 };

@@ -1,12 +1,32 @@
 const config = require('../config');
-const logger = require('../utils/logger');
 
 let accessToken = null;
 let tokenExpiry = 0;
 let newAccessToken = null;
 let newTokenExpiry = 0;
 
-// 获取钉钉 access_token（旧版 oapi，用于老接口）
+async function parseJsonResponse(resp, action) {
+  const text = await resp.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`${action}失败: 钉钉返回了非 JSON 响应 (${resp.status})`);
+  }
+
+  if (!resp.ok) {
+    throw new Error(`${action}失败: ${JSON.stringify(data)}`);
+  }
+
+  if (data?.code || data?.errcode) {
+    const code = data.code || data.errcode;
+    const message = data.message || data.errmsg || JSON.stringify(data);
+    throw new Error(`${action}失败: ${message} (${code})`);
+  }
+
+  return data;
+}
+
 async function getAccessToken() {
   if (accessToken && Date.now() < tokenExpiry) return accessToken;
 
@@ -16,12 +36,12 @@ async function getAccessToken() {
   }
 
   const resp = await fetch(
-    `https://oapi.dingtalk.com/gettoken?appkey=${appKey}&appsecret=${appSecret}`
+    `https://oapi.dingtalk.com/gettoken?appkey=${encodeURIComponent(appKey)}&appsecret=${encodeURIComponent(appSecret)}`
   );
-  const data = await resp.json();
+  const data = await parseJsonResponse(resp, '获取钉钉旧版 token');
 
-  if (data.errcode !== 0) {
-    throw new Error(`获取钉钉 token 失败: ${data.errmsg}`);
+  if (data.errcode !== 0 || !data.access_token) {
+    throw new Error(`获取钉钉 token 失败: ${data.errmsg || JSON.stringify(data)}`);
   }
 
   accessToken = data.access_token;
@@ -29,7 +49,6 @@ async function getAccessToken() {
   return accessToken;
 }
 
-// 获取新版 access_token（用于 Bitable 等新 API）
 async function getNewAccessToken() {
   if (newAccessToken && Date.now() < newTokenExpiry) return newAccessToken;
 
@@ -43,112 +62,147 @@ async function getNewAccessToken() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ appKey, appSecret }),
   });
-  const data = await resp.json();
+  const data = await parseJsonResponse(resp, '获取钉钉新版 token');
 
   if (!data.accessToken) {
     throw new Error(`获取钉钉新版 token 失败: ${JSON.stringify(data)}`);
   }
 
   newAccessToken = data.accessToken;
-  newTokenExpiry = Date.now() + (data.expireIn - 300) * 1000;
+  newTokenExpiry = Date.now() + ((data.expireIn || 7200) - 300) * 1000;
   return newAccessToken;
 }
 
-// 获取钉钉表格数据（电子表格 Spreadsheet）
 async function getSpreadsheetData(documentId, sheetName) {
   const token = await getAccessToken();
 
-  // 获取工作表列表
   const sheetsResp = await fetch(
-    `https://api.dingtalk.com/v1.0/doc/spreadsheets/${documentId}/sheets`,
+    `https://api.dingtalk.com/v1.0/doc/spreadsheets/${encodeURIComponent(documentId)}/sheets`,
     { headers: { 'x-acs-access-token': token } }
   );
-  const sheetsData = await sheetsResp.json();
+  const sheetsData = await parseJsonResponse(sheetsResp, '获取钉钉电子表格工作表');
+  const sheets = Array.isArray(sheetsData) ? sheetsData : (sheetsData.sheets || sheetsData.items || []);
 
-  if (!sheetsData || !sheetsData.length) {
+  if (!sheets.length) {
     throw new Error('无法获取工作表信息');
   }
 
-  // 选择指定工作表或默认第一个
   const sheet = sheetName
-    ? sheetsData.find(s => s.name === sheetName)
-    : sheetsData[0];
+    ? sheets.find(s => s.name === sheetName || s.sheetName === sheetName)
+    : sheets[0];
 
   if (!sheet) throw new Error(`未找到工作表: ${sheetName}`);
 
-  // 读取表格数据
   const rangeResp = await fetch(
-    `https://api.dingtalk.com/v1.0/doc/spreadsheets/${documentId}/sheets/${sheet.sheetId}/range`,
+    `https://api.dingtalk.com/v1.0/doc/spreadsheets/${encodeURIComponent(documentId)}/sheets/${encodeURIComponent(sheet.sheetId || sheet.id)}/range`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-acs-access-token': token },
       body: JSON.stringify({ range: 'A1:Z1000' }),
     }
   );
-  const rangeData = await rangeResp.json();
+  const rangeData = await parseJsonResponse(rangeResp, '读取钉钉电子表格数据');
 
   return rangeData.values || [];
 }
 
-// 获取钉钉多维表数据（Bitable）
-async function getBitableData(appToken, tableName) {
+function pickArray(data, keys) {
+  for (const key of keys) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+  if (Array.isArray(data?.value)) return data.value;
+  if (Array.isArray(data?.result)) return data.result;
+  if (Array.isArray(data?.result?.value)) return data.result.value;
+  if (Array.isArray(data?.result?.items)) return data.result.items;
+  if (Array.isArray(data?.result?.list)) return data.result.list;
+  if (Array.isArray(data?.result?.records)) return data.result.records;
+  if (Array.isArray(data?.result?.sheets)) return data.result.sheets;
+  if (Array.isArray(data?.result?.fields)) return data.result.fields;
+  return [];
+}
+
+function buildOperatorQuery(operatorId) {
+  if (!operatorId) {
+    throw new Error('钉钉 AI 表格 API 需要 operatorId，请配置 DINGTALK_OPERATOR_ID（当前验证可用的是钉钉 openId）或在请求中传 operator_id');
+  }
+  return `operatorId=${encodeURIComponent(operatorId)}`;
+}
+
+function normalizeFieldValue(value) {
+  if (value == null) return '';
+  if (Array.isArray(value)) {
+    return value.map(normalizeFieldValue).filter(Boolean).join(', ');
+  }
+  if (typeof value === 'object') {
+    return value.text || value.name || value.title || value.value || JSON.stringify(value);
+  }
+  return value;
+}
+
+async function getNotableData(baseId, sheetName, operatorId = config.dingtalk.operatorId) {
   const token = await getNewAccessToken();
+  const baseUrl = `https://api.dingtalk.com/v1.0/notable/bases/${encodeURIComponent(baseId)}`;
+  const operatorQuery = buildOperatorQuery(operatorId);
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-acs-dingtalk-access-token': token,
+  };
 
-  // 1. 获取表格列表
-  const tablesResp = await fetch(
-    `https://api.dingtalk.com/v1.0/bitable/apps/${appToken}/tables`,
-    { headers: { 'x-acs-dingtalk-access-token': token } }
-  );
-  const tablesData = await tablesResp.json();
+  const sheetsResp = await fetch(`${baseUrl}/sheets?${operatorQuery}`, { headers });
+  const sheetsData = await parseJsonResponse(sheetsResp, '获取钉钉 AI 表格数据表');
+  const sheets = pickArray(sheetsData, ['sheets', 'items', 'list']);
 
-  if (tablesData.code) {
-    throw new Error(`获取多维表失败: ${tablesData.message} (${tablesData.code})`);
+  if (!sheets.length) {
+    throw new Error('AI 表格中没有找到任何数据表');
   }
 
-  const tables = tablesData.items || [];
-  if (!tables.length) {
-    throw new Error('多维表中没有找到任何数据表');
-  }
+  const sheet = sheetName
+    ? sheets.find(s => s.name === sheetName || s.sheetName === sheetName || s.id === sheetName || s.sheetId === sheetName)
+    : sheets[0];
 
-  // 选择指定表或默认第一个
-  const table = tableName
-    ? tables.find(t => t.name === tableName)
-    : tables[0];
+  if (!sheet) throw new Error(`未找到数据表: ${sheetName}`);
 
-  if (!table) throw new Error(`未找到数据表: ${tableName}`);
+  const sheetId = sheet.id || sheet.sheetId || sheet.sheetIdOrName || sheet.name || sheet.sheetName;
+  const fieldsResp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/fields?${operatorQuery}`, { headers });
+  const fieldsData = await parseJsonResponse(fieldsResp, '获取钉钉 AI 表格字段');
+  const fieldDefs = pickArray(fieldsData, ['fields', 'items', 'list']);
+  let fields = fieldDefs
+    .map(f => ({ id: f.id || f.fieldId || f.name || f.fieldName, name: f.name || f.fieldName || f.id || f.fieldId }))
+    .filter(f => f.name);
 
-  // 2. 获取字段列表
-  const fieldsResp = await fetch(
-    `https://api.dingtalk.com/v1.0/bitable/apps/${appToken}/tables/${table.tableId}/fields`,
-    { headers: { 'x-acs-dingtalk-access-token': token } }
-  );
-  const fieldsData = await fieldsResp.json();
-  const fields = (fieldsData.items || []).map(f => f.name);
-
-  // 3. 获取记录数据
-  const recordsResp = await fetch(
-    `https://api.dingtalk.com/v1.0/bitable/apps/${appToken}/tables/${table.tableId}/records?pageSize=500`,
-    { headers: { 'x-acs-dingtalk-access-token': token } }
-  );
-  const recordsData = await recordsResp.json();
-  const records = recordsData.items || [];
-
-  // 4. 转换为二维数组格式（表头 + 数据行）
-  const rows = [fields];
-  for (const record of records) {
-    const row = fields.map(field => {
-      const val = record.fields[field];
-      if (Array.isArray(val)) return val.map(v => v.text || v.name || v).join(', ');
-      if (val && typeof val === 'object') return val.text || val.name || JSON.stringify(val);
-      return val ?? '';
+  const records = [];
+  let nextToken;
+  do {
+    const recordsResp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/list?${operatorQuery}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ maxResults: 100, ...(nextToken ? { nextToken } : {}) }),
     });
+    const recordsData = await parseJsonResponse(recordsResp, '获取钉钉 AI 表格记录');
+
+    records.push(...pickArray(recordsData, ['records', 'items', 'list']));
+    nextToken = recordsData.nextToken || recordsData.nextPageToken || recordsData.result?.nextToken || recordsData.result?.nextPageToken;
+  } while (nextToken);
+
+  if (!fields.length && records.length) {
+    const firstValues = records[0].fields || records[0].values || records[0].recordValues || {};
+    fields = Object.keys(firstValues).map(key => ({ id: key, name: key }));
+  }
+
+  const rows = [fields.map(field => field.name)];
+  for (const record of records) {
+    const values = record.fields || record.values || record.recordValues || {};
+    const row = fields.map(field => normalizeFieldValue(values[field.name] ?? values[field.id]));
     rows.push(row);
   }
 
   return rows;
 }
 
-// 上传文件到钉钉云盘
+async function getBitableData(appToken, tableName, operatorId) {
+  return getNotableData(appToken, tableName, operatorId);
+}
+
 async function uploadFile(fileBuffer, fileName, folderId) {
   const token = await getAccessToken();
 
@@ -162,7 +216,7 @@ async function uploadFile(fileBuffer, fileName, folderId) {
     body: formData,
   });
 
-  const data = await resp.json();
+  const data = await parseJsonResponse(resp, '上传文件到钉钉');
   if (!data.url) {
     throw new Error('文件上传失败: ' + JSON.stringify(data));
   }
@@ -170,7 +224,6 @@ async function uploadFile(fileBuffer, fileName, folderId) {
   return data;
 }
 
-// 发送群消息（通过 webhook）
 async function sendGroupMessage(message) {
   const { webhookUrl } = config.dingtalk;
   if (!webhookUrl) {
@@ -186,7 +239,7 @@ async function sendGroupMessage(message) {
     }),
   });
 
-  const data = await resp.json();
+  const data = await parseJsonResponse(resp, '发送钉钉群消息');
   if (data.errcode !== 0) {
     throw new Error('发送钉钉消息失败: ' + data.errmsg);
   }
@@ -194,11 +247,9 @@ async function sendGroupMessage(message) {
   return data;
 }
 
-// 验证钉钉回调签名
-function verifySignature(headers, body) {
-  // 简化实现，生产环境需要完整的签名验证
+function verifySignature(headers) {
   const { appSecret } = config.dingtalk;
-  if (!appSecret) return true; // 未配置时跳过验证
+  if (!appSecret) return true;
 
   const timestamp = headers['x-dingtalk-sign-timestamp'];
   const sign = headers['x-dingtalk-sign'];
@@ -219,6 +270,7 @@ module.exports = {
   getAccessToken,
   getNewAccessToken,
   getSpreadsheetData,
+  getNotableData,
   getBitableData,
   uploadFile,
   sendGroupMessage,

@@ -5,25 +5,25 @@ const supabase = require('../services/supabase');
 // 从钉钉导入表格
 exports.importFromDingTalk = async (req, res) => {
   try {
-    const { document_id, sheet_name, column_mapping } = req.body;
+    const { document_id, sheet_name, column_mapping, operator_id } = req.body;
 
     if (!document_id) {
       return res.status(400).json({ error: '请提供钉钉文档ID' });
     }
 
-    // 1. 从钉钉获取表格数据（先尝试多维表 API，失败则用电子表格 API）
+    // 1. 从钉钉获取表格数据（先尝试 AI 表格 API，失败则用电子表格 API）
     let sheetData;
     try {
-      sheetData = await dingtalkService.getBitableData(document_id, sheet_name);
-      console.log('使用多维表 API 获取数据成功');
-    } catch (bitableErr) {
-      console.log('多维表 API 失败，尝试电子表格 API:', bitableErr.message);
+      sheetData = await dingtalkService.getNotableData(document_id, sheet_name, operator_id);
+      console.log('使用 AI 表格 API 获取数据成功');
+    } catch (notableErr) {
+      console.log('AI 表格 API 失败，尝试电子表格 API:', notableErr.message);
       try {
         sheetData = await dingtalkService.getSpreadsheetData(document_id, sheet_name);
         console.log('使用电子表格 API 获取数据成功');
       } catch (spreadsheetErr) {
         return res.status(400).json({
-          error: `无法获取钉钉数据。多维表错误: ${bitableErr.message}; 电子表格错误: ${spreadsheetErr.message}。建议使用文件上传方式导入。`
+          error: `无法获取钉钉数据。AI 表格错误: ${notableErr.message}; 电子表格错误: ${spreadsheetErr.message}。建议使用文件上传方式导入。`
         });
       }
     }
@@ -215,11 +215,11 @@ exports.getSyncLogs = async (req, res) => {
 function autoMapColumns(headers) {
   const fieldMap = {
     '类型': 'type', 'type': 'type', '机器人类型': 'type', '型号': 'type',
-    '序列号': 'serial', 'serial': 'serial', '编号': 'serial', '出厂编号': 'serial',
-    '状态': 'status', 'status': 'status',
-    '负责人': 'person', 'person': 'person', '责任人': 'person', '管理人': 'person',
+    '序列号': 'serial', 'serial': 'serial', '编号': 'serial', '出厂编号': 'serial', '机器人出厂编号': 'serial',
+    '状态': 'status', 'status': 'status', '机器人状态': 'status',
+    '负责人': 'person', 'person': 'person', '责任人': 'person', '管理人': 'person', '关联责任人': 'person',
     'IP': 'ip', 'ip': 'ip', 'IP地址': 'ip',
-    '位置': 'location', 'location': 'location', '地点': 'location', '所在位置': 'location',
+    '位置': 'location', 'location': 'location', '地点': 'location', '所在位置': 'location', '位置更新时间（每周五更新）': 'location',
     '备注': 'notes', 'notes': 'notes', '说明': 'notes',
     '条形码': 'barcode', 'barcode': 'barcode', '条码': 'barcode',
     '部门': 'department', 'department': 'department', '所属部门': 'department',

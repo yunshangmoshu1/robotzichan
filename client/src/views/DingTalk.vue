@@ -164,7 +164,7 @@
 
             <el-alert type="warning" :closable="false" style="margin-bottom: 16px;">
               <template #title>
-                <div>API 导入需要在钉钉开放平台开通 <strong>bitable:app:readonly</strong> 权限并发布应用版本。</div>
+                <div>API 导入需要在钉钉开放平台开通 <strong>Notable.Base.Read.All</strong> 权限并发布应用版本。</div>
                 <div style="margin-top: 4px; font-size: 12px; color: #909399;">
                   如果 API 调用失败，请使用上方的文件上传方式：从钉钉多维表导出 xlsx 后上传。
                 </div>
@@ -175,8 +175,11 @@
               <el-form-item label="文档ID">
                 <el-input v-model="importForm.document_id" placeholder="钉钉多维表文档 ID" />
               </el-form-item>
-              <el-form-item label="工作表名">
-                <el-input v-model="importForm.sheet_name" placeholder="留空则使用第一个工作表" />
+              <el-form-item label="工作表名/ID">
+                <el-input v-model="importForm.sheet_name" placeholder="留空则使用第一个工作表，可填工作表 ID" />
+              </el-form-item>
+              <el-form-item label="操作人ID">
+                <el-input v-model="importForm.operator_id" placeholder="可选，钉钉 operatorId/openId；也可配置 DINGTALK_OPERATOR_ID" />
               </el-form-item>
               <el-form-item>
                 <el-button @click="previewImport" :disabled="!importForm.document_id" :loading="apiLoading">API 预览</el-button>
@@ -316,7 +319,11 @@ const filterOptions = ref({ types: [] })
 
 // 导入
 const importStep = ref(0)
-const importForm = reactive({ document_id: '', sheet_name: '' })
+const importForm = reactive({
+  document_id: 'MyQA2dXW7ZObXrq5hZjnyDk28zlwrZgb',
+  sheet_name: 'WzQTWCb',
+  operator_id: '',
+})
 const importFile = ref(null)
 const importPreview = ref({ preview: [], total: 0 })
 const importResult = ref({ imported: 0 })
@@ -377,11 +384,11 @@ function handleSyncFileChange(file) {
       // 映射字段
       const fieldMap = {
         '类型': 'type', 'type': 'type', '机器人类型': 'type', '型号': 'type',
-        '序列号': 'serial', 'serial': 'serial', '编号': 'serial', '出厂编号': 'serial',
-        '状态': 'status', 'status': 'status',
-        '负责人': 'person', 'person': 'person', '责任人': 'person',
+        '序列号': 'serial', 'serial': 'serial', '编号': 'serial', '出厂编号': 'serial', '机器人出厂编号': 'serial',
+        '状态': 'status', 'status': 'status', '机器人状态': 'status',
+        '负责人': 'person', 'person': 'person', '责任人': 'person', '关联责任人': 'person',
         'IP': 'ip', 'ip': 'ip', 'IP地址': 'ip',
-        '位置': 'location', 'location': 'location', '地点': 'location',
+        '位置': 'location', 'location': 'location', '地点': 'location', '位置更新时间（每周五更新）': 'location',
         '备注': 'notes', 'notes': 'notes', '说明': 'notes',
         '条形码': 'barcode', 'barcode': 'barcode', '条码': 'barcode',
         '部门': 'department', 'department': 'department',
@@ -464,11 +471,11 @@ const syncLogs = ref([])
 // 中文列名 → 英文字段映射
 const fieldMap = {
   '类型': 'type', 'type': 'type', '机器人类型': 'type', '型号': 'type',
-  '序列号': 'serial', 'serial': 'serial', '编号': 'serial', '出厂编号': 'serial',
-  '状态': 'status', 'status': 'status',
-  '负责人': 'person', 'person': 'person', '责任人': 'person', '管理人': 'person',
+  '序列号': 'serial', 'serial': 'serial', '编号': 'serial', '出厂编号': 'serial', '机器人出厂编号': 'serial',
+  '状态': 'status', 'status': 'status', '机器人状态': 'status',
+  '负责人': 'person', 'person': 'person', '责任人': 'person', '管理人': 'person', '关联责任人': 'person',
   'IP': 'ip', 'ip': 'ip', 'IP地址': 'ip',
-  '位置': 'location', 'location': 'location', '地点': 'location', '所在位置': 'location',
+  '位置': 'location', 'location': 'location', '地点': 'location', '所在位置': 'location', '位置更新时间（每周五更新）': 'location',
   '备注': 'notes', 'notes': 'notes', '说明': 'notes',
   '条形码': 'barcode', 'barcode': 'barcode', '条码': 'barcode',
   '部门': 'department', 'department': 'department', '所属部门': 'department',
