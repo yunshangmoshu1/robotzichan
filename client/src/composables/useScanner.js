@@ -1,5 +1,5 @@
 import { ref, onUnmounted } from 'vue'
-import { Html5Qrcode } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 
 export function useScanner() {
   const scanner = ref(null)
@@ -10,19 +10,33 @@ export function useScanner() {
   async function startScanner(containerId, onScan) {
     try {
       error.value = null
-      scanner.value = new Html5Qrcode(containerId)
+      scanner.value = new Html5Qrcode(containerId, {
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.CODABAR,
+        ],
+      })
 
-      // 根据容器实际宽度动态计算扫描框大小
+      // 根据容器实际宽度动态计算扫描框大小（横向更宽，适配条形码）
       const container = document.getElementById(containerId)
       const containerWidth = container ? container.offsetWidth : 300
-      const scanSize = Math.min(Math.floor(containerWidth * 0.85), 500)
+      const scanWidth = Math.min(Math.floor(containerWidth * 0.9), 500)
+      const scanHeight = Math.floor(scanWidth * 0.5)
 
       await scanner.value.start(
         { facingMode: 'environment' },
         {
           fps: 15,
-          qrbox: { width: scanSize, height: scanSize },
-          aspectRatio: 1.0,
+          qrbox: { width: scanWidth, height: scanHeight },
+          aspectRatio: 1.5,
           disableFlip: false,
           experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         },
