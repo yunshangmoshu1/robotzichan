@@ -254,17 +254,17 @@ async function writeDataToNotable(baseId, sheetName, operatorId, data) {
     // 分批删除（每批最多 100 条）
     for (let i = 0; i < recordIds.length; i += 100) {
       const batch = recordIds.slice(i, i + 100);
-      await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchDelete?${operatorQuery}`, {
+      const delResp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchDelete?${operatorQuery}`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ recordIds: batch }),
       });
+      await parseJsonResponse(delResp, '批量删除旧记录');
     }
     console.log(`[自动同步] 已删除 ${recordIds.length} 条旧记录`);
   }
 
   // 3. 批量写入新数据
-  const fields = ['类型', '序列号', '状态', '负责人', 'IP地址', '位置', '条形码', '部门', '备注'];
   const records = data.map(robot => ({
     fields: {
       '类型': robot.type || '',
@@ -282,11 +282,13 @@ async function writeDataToNotable(baseId, sheetName, operatorId, data) {
   // 分批写入（每批最多 100 条）
   for (let i = 0; i < records.length; i += 100) {
     const batch = records.slice(i, i + 100);
-    await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchCreate?${operatorQuery}`, {
+    const createResp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchCreate?${operatorQuery}`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ records: batch }),
     });
+    const createResult = await parseJsonResponse(createResp, '批量写入新记录');
+    console.log(`[自动同步] 写入第 ${i / 100 + 1} 批，${batch.length} 条`);
   }
 
   return { count: data.length, sheetId };
