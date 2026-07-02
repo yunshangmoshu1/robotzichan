@@ -1,13 +1,16 @@
 import { ref, onUnmounted } from 'vue'
-import Quagga from '@ericblade/quagga2'
+import { readBarcodesFromImageData, readBarcodesFromImageFile } from 'zxing-wasm'
 
 export function useScanner() {
-  const scanner = ref(null)
   const isScanning = ref(false)
   const lastResult = ref(null)
   const error = ref(null)
+  const cameraStream = ref(null)
+  let scanTimer = null
+  let videoEl = null
 
-  function startScanner(containerId, onScan) {
+  // 启动摄像头实时扫描
+  async function startScanner(containerId, onScan) {
     error.value = null
 
     const container = document.getElementById(containerId)
@@ -16,105 +19,113 @@ export function useScanner() {
       return
     }
 
-    Quagga.init({
-      inputStream: {
-        type: 'LiveStream',
-        target: container,
-        constraints: {
+    try {
+      // 申请后置摄像头
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
           facingMode: 'environment',
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
-      },
-      decoder: {
-        readers: [
-          'code_128_reader',
-          'code_39_reader',
-          'ean_reader',
-          'ean_8_reader',
-          'upc_reader',
-          'upc_e_reader',
-          'codabar_reader',
-          'i2of5_reader',
-        ],
-      },
-      locate: true,
-      frequency: 10,
-    }, (err) => {
-      if (err) {
-        error.value = '无法启动摄像头: ' + (err.message || err)
-        return
-      }
-      Quagga.start()
+      })
+      cameraStream.value = stream
+
+      // 创建 video 元素
+      videoEl = document.createElement('video')
+      videoEl.srcObject = stream
+      videoEl.autoplay = true
+      videoEl.playsInline = true
+      videoEl.muted = true
+      videoEl.style.width = '100%'
+      videoEl.style.borderRadius = '8px'
+      videoEl.style.display = 'block'
+      container.innerHTML = ''
+      container.appendChild(videoEl)
+
+      await videoEl.play()
       isScanning.value = true
-    })
 
-    Quagga.onDetected((result) => {
-      if (!result || !result.codeResult) return
-      const code = result.codeResult.code
-      if (!code) return
+      // 每 500ms 检测一次（平衡性能和灵敏度）
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
-      // 去重：连续相同结果间隔 2 秒
-      const now = Date.now()
-      if (lastResult.value === code && now - (lastResult._time || 0) < 2000) return
-      lastResult.value = code
-      lastResult._time = now
+      scanTimer = setInterval(async () => {
+        if (!videoEl || !isScanning.value) return
 
-      // 振动反馈
-      if (navigator.vibrate) navigator.vibrate(200)
-      if (onScan) onScan(code)
-    })
+        // 取当前视频帧
+        canvas.width = videoEl.videoWidth
+        canvas.height = videoEl.videoHeight
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height)
+
+        try {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          const results = await readBarcodesFromImageData(imageData, {
+            tryHarder: true,
+            tryRotate: true,
+            tryInvert: true,
+            tryDownscale: true,
+            maxNumberOfSymbols: 1,
+          })
+
+          if (results && results.length > 0) {
+            const code = results[0].text
+            if (!code) return
+
+            // 去重：2 秒内相同结果不重复触发
+            const now = Date.now()
+            if (lastResult.value === code && now - (lastResult._time || 0) < 2000) return
+            lastResult.value = code
+            lastResult._time = now
+
+            if (navigator.vibrate) navigator.vibrate(200)
+            if (onScan) onScan(code)
+          }
+        } catch (e) {
+          // 解码失败，继续扫描
+        }
+      }, 500)
+    } catch (err) {
+      error.value = '无法启动摄像头: ' + (err.message || err)
+    }
   }
 
   function stopScanner() {
-    if (isScanning.value) {
-      try {
-        Quagga.stop()
-      } catch (e) {
-        // 忽略停止错误
-      }
-      isScanning.value = false
+    isScanning.value = false
+
+    if (scanTimer) {
+      clearInterval(scanTimer)
+      scanTimer = null
     }
+
+    if (cameraStream.value) {
+      cameraStream.value.getTracks().forEach(t => t.stop())
+      cameraStream.value = null
+    }
+
+    if (videoEl) {
+      videoEl.srcObject = null
+      videoEl = null
+    }
+  }
+
+  // 从图片文件解码（拍照识别）
+  async function decodeFromImage(file) {
+    const results = await readBarcodesFromImageFile(file, {
+      tryHarder: true,
+      tryRotate: true,
+      tryInvert: true,
+      tryDownscale: true,
+    })
+
+    if (results && results.length > 0 && results[0].text) {
+      return results[0].text
+    }
+    throw new Error('未识别到条形码')
   }
 
   onUnmounted(() => {
     stopScanner()
   })
 
-  // 从图片文件解码条形码
-  function decodeFromImage(file) {
-    return new Promise((resolve, reject) => {
-      const readers = [
-        'code_128_reader',
-        'code_39_reader',
-        'ean_reader',
-        'ean_8_reader',
-        'upc_reader',
-        'upc_e_reader',
-        'codabar_reader',
-        'i2of5_reader',
-      ]
-
-      // 先用 FileReader 读取为 data URL
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        Quagga.decodeSingle({
-          src: e.target.result,
-          decoder: { readers },
-          locate: true,
-          numOfWorkers: 0,
-        }, (result) => {
-          if (result && result.codeResult && result.codeResult.code) {
-            resolve(result.codeResult.code)
-          } else {
-            reject(new Error('未识别到条形码'))
-          }
-        })
-      }
-      reader.onerror = () => reject(new Error('图片读取失败'))
-      reader.readAsDataURL(file)
-    })
-  }
-
-  return { scanner, isScanning, lastResult, error, startScanner, stopScanner, decodeFromImage }
+  return { isScanning, lastResult, error, startScanner, stopScanner, decodeFromImage }
 }

@@ -241,16 +241,10 @@ body {
     overflow: hidden;
     position: relative;
 
-    video,
-    canvas {
+    video {
       width: 100% !important;
       border-radius: 8px;
-    }
-
-    canvas.drawingBuffer {
-      position: absolute;
-      top: 0;
-      left: 0;
+      display: block;
     }
   }
 }
