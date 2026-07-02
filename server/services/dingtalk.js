@@ -235,7 +235,7 @@ async function writeDataToNotable(baseId, sheetName, operatorId, data) {
 
   const sheetId = sheet.id || sheet.sheetId || sheet.name;
 
-  // 2. 清空现有数据（分批获取并删除）
+  // 2. 获取现有记录，建立 序列号→recordId 映射
   let allExistingRecords = [];
   let nextToken;
   do {
@@ -249,24 +249,20 @@ async function writeDataToNotable(baseId, sheetName, operatorId, data) {
     nextToken = recordsData.nextToken || recordsData.nextPageToken;
   } while (nextToken);
 
-  if (allExistingRecords.length > 0) {
-    const recordIds = allExistingRecords.map(r => r.recordId || r.id).filter(Boolean);
-    // 分批删除（每批最多 100 条）
-    for (let i = 0; i < recordIds.length; i += 100) {
-      const batch = recordIds.slice(i, i + 100);
-      const delResp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchDelete?${operatorQuery}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ recordIds: batch }),
-      });
-      await parseJsonResponse(delResp, '批量删除旧记录');
-    }
-    console.log(`[自动同步] 已删除 ${recordIds.length} 条旧记录`);
+  // 按 序列号 建立索引
+  const existingMap = new Map();
+  for (const record of allExistingRecords) {
+    const values = record.fields || record.values || record.recordValues || {};
+    const serial = normalizeFieldValue(values['序列号'] ?? values['serial'] ?? '');
+    if (serial) existingMap.set(serial, record.recordId || record.id);
   }
 
-  // 3. 批量写入新数据
-  const records = data.map(robot => ({
-    fields: {
+  // 3. 构建记录，区分 更新 vs 新增
+  const toUpdate = [];
+  const toCreate = [];
+
+  for (const robot of data) {
+    const fields = {
       '类型': robot.type || '',
       '序列号': robot.serial || '',
       '状态': robot.status || '',
@@ -276,22 +272,42 @@ async function writeDataToNotable(baseId, sheetName, operatorId, data) {
       '条形码': robot.barcode || '',
       '部门': robot.department || '',
       '备注': robot.notes || '',
+    };
+    const recordId = existingMap.get(robot.serial);
+    if (recordId) {
+      toUpdate.push({ recordId, fields });
+      existingMap.delete(robot.serial); // 标记已处理
+    } else {
+      toCreate.push({ fields });
     }
-  }));
+  }
 
-  // 分批写入（每批最多 100 条）
-  for (let i = 0; i < records.length; i += 100) {
-    const batch = records.slice(i, i + 100);
-    const createResp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchCreate?${operatorQuery}`, {
+  // 4. 批量更新已有记录
+  for (let i = 0; i < toUpdate.length; i += 100) {
+    const batch = toUpdate.slice(i, i + 100);
+    const resp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchUpdate?${operatorQuery}`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ records: batch }),
     });
-    const createResult = await parseJsonResponse(createResp, '批量写入新记录');
-    console.log(`[自动同步] 写入第 ${i / 100 + 1} 批，${batch.length} 条`);
+    await parseJsonResponse(resp, '批量更新记录');
+    console.log(`[自动同步] 更新第 ${Math.floor(i / 100) + 1} 批，${batch.length} 条`);
   }
 
-  return { count: data.length, sheetId };
+  // 5. 批量新增不存在的记录
+  for (let i = 0; i < toCreate.length; i += 100) {
+    const batch = toCreate.slice(i, i + 100);
+    const resp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchCreate?${operatorQuery}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ records: batch }),
+    });
+    await parseJsonResponse(resp, '批量新增记录');
+    console.log(`[自动同步] 新增第 ${Math.floor(i / 100) + 1} 批，${batch.length} 条`);
+  }
+
+  console.log(`[自动同步] 完成: 更新 ${toUpdate.length} 条, 新增 ${toCreate.length} 条`);
+  return { count: data.length, sheetId, updated: toUpdate.length, created: toCreate.length };
 }
 
 // 获取云盘空间列表
