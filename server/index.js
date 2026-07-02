@@ -44,7 +44,7 @@ app.listen(config.server.port, () => {
       sheetName: process.env.DINGTALK_SYNC_SHEET_NAME || '',
       operatorId: process.env.DINGTALK_OPERATOR_ID || '',
       folderId: process.env.DINGTALK_SYNC_FOLDER_ID || '',
-      interval: parseInt(process.env.DINGTALK_SYNC_INTERVAL) || 30,
+      interval: parseInt(process.env.DINGTALK_SYNC_INTERVAL) || 1,
     };
     const scheduler = require('./services/scheduler');
     scheduler.start(config.syncConfig.interval);

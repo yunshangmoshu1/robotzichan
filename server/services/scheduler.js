@@ -183,13 +183,13 @@ function getSyncConfig() {
     const stored = require('../config').syncConfig || {};
     return {
       documentId: stored.documentId || process.env.DINGTALK_SYNC_DOCUMENT_ID || '',
-      sheetName: stored.sheetName || '',
-      operatorId: stored.operatorId || '',
+      sheetName: stored.sheetName || process.env.DINGTALK_SYNC_SHEET_NAME || '',
+      operatorId: stored.operatorId || process.env.DINGTALK_OPERATOR_ID || '',
       folderId: stored.folderId || '',
-      interval: stored.interval || 30,
+      interval: stored.interval || parseInt(process.env.DINGTALK_SYNC_INTERVAL) || 1,
     };
   } catch {
-    return { documentId: '', sheetName: '', operatorId: '', folderId: '', interval: 30 };
+    return { documentId: '', sheetName: '', operatorId: '', folderId: '', interval: 1 };
   }
 }
 
