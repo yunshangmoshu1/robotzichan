@@ -19,17 +19,14 @@
 
           <el-alert type="info" :closable="false" style="margin-bottom: 20px;">
             <template #title>
-              <div>系统定时将网站数据导出为 Excel 文件并上传到钉钉云盘。</div>
+              <div>系统定时将网站数据直接同步到钉钉 AI 表格（多维表）。</div>
               <div style="margin-top: 4px; font-size: 12px; color: #909399;">
-                需要配置钉钉云盘文件夹 ID，导出的文件会自动覆盖更新。
+                每次同步会先清空表格旧数据，再写入最新数据。
               </div>
             </template>
           </el-alert>
 
           <el-form label-width="120px" style="max-width: 600px;">
-            <el-form-item label="钉钉文件夹ID">
-              <el-input v-model="autoSyncForm.folder_id" placeholder="可选，留空则上传到云盘默认位置" />
-            </el-form-item>
             <el-form-item label="同步间隔">
               <el-input-number v-model="autoSyncForm.interval" :min="1" :max="1440" :step="1" />
               <span style="margin-left: 8px; color: #909399;">分钟</span>
@@ -59,8 +56,8 @@
             <el-descriptions-item label="同步间隔">
               {{ autoSyncStatus.config?.interval || autoSyncForm.interval }} 分钟
             </el-descriptions-item>
-            <el-descriptions-item label="文件夹ID">
-              {{ autoSyncStatus.config?.folderId || autoSyncForm.folder_id || '未配置' }}
+            <el-descriptions-item label="同步方向">
+              网站 → 钉钉 AI 表格
             </el-descriptions-item>
           </el-descriptions>
 
@@ -224,7 +221,6 @@ const filterOptions = ref({ types: [] })
 
 // 自动同步（网站 → 钉钉）
 const autoSyncForm = reactive({
-  folder_id: '',
   interval: 1,
 })
 const autoSyncStatus = ref({ enabled: false, running: false, lastSync: null, lastResult: null, config: {} })
@@ -341,18 +337,13 @@ async function loadAutoSyncStatus() {
     const status = await dingtalkApi.getAutoSyncStatus()
     autoSyncStatus.value = status
     // 用服务端配置回填表单
-    if (status.config) {
-      if (status.config.folderId) autoSyncForm.folder_id = status.config.folderId
-      if (status.config.interval) autoSyncForm.interval = status.config.interval
+    if (status.config?.interval) {
+      autoSyncForm.interval = status.config.interval
     }
   } catch (e) { /* ignore */ }
 }
 
 async function startAutoSync() {
-  if (!autoSyncForm.document_id) {
-    ElMessage.warning('请输入钉钉文档ID')
-    return
-  }
   autoSyncLoading.value = true
   try {
     await dingtalkApi.startAutoSync(autoSyncForm)
