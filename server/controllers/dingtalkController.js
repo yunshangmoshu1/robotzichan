@@ -271,6 +271,31 @@ exports.triggerImport = async (req, res) => {
 
 // ---- 辅助函数 ----
 
+// 获取钉钉云盘空间列表
+exports.getSpaces = async (req, res) => {
+  try {
+    const spaces = await dingtalkService.getSpaces();
+    res.json({ spaces });
+  } catch (err) {
+    res.status(500).json({ error: '获取空间列表失败: ' + err.message });
+  }
+};
+
+// 创建钉钉云盘文件夹
+exports.createFolder = async (req, res) => {
+  try {
+    const { space_id, parent_node_id, name } = req.body;
+    if (!space_id || !name) {
+      return res.status(400).json({ error: '请提供 space_id 和文件夹名称' });
+    }
+    const parentId = parent_node_id || 'root';
+    const result = await dingtalkService.createFolder(space_id, parentId, name);
+    res.json({ message: '文件夹创建成功', ...result });
+  } catch (err) {
+    res.status(500).json({ error: '创建文件夹失败: ' + err.message });
+  }
+};
+
 // 自动列映射：根据表头名称猜测对应字段
 function autoMapColumns(headers) {
   const fieldMap = {

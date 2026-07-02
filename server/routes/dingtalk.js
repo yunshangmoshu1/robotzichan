@@ -19,4 +19,8 @@ router.post('/auto-sync/trigger', ctrl.triggerSync);
 // 手动导入（钉钉 → 网站）
 router.post('/import-from-dingtalk', ctrl.triggerImport);
 
+// 云盘文件夹管理
+router.get('/spaces', ctrl.getSpaces);
+router.post('/create-folder', ctrl.createFolder);
+
 module.exports = router;

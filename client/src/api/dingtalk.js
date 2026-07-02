@@ -13,4 +13,7 @@ export const dingtalkApi = {
   triggerSync: () => api.post('/dingtalk/auto-sync/trigger'),
   // 手动导入（钉钉 → 网站）
   triggerImport: () => api.post('/dingtalk/import-from-dingtalk'),
+  // 云盘文件夹管理
+  getSpaces: () => api.get('/dingtalk/spaces'),
+  createFolder: (data) => api.post('/dingtalk/create-folder', data),
 }

@@ -224,6 +224,45 @@ async function uploadFile(fileBuffer, fileName, folderId) {
   return data;
 }
 
+// 获取云盘空间列表
+async function getSpaces() {
+  const token = await getNewAccessToken();
+  const resp = await fetch('https://api.dingtalk.com/v1.0/drive/spaces', {
+    headers: { 'x-acs-dingtalk-access-token': token },
+  });
+  const data = await parseJsonResponse(resp, '获取钉钉云盘空间');
+  const spaces = data.spaces || data.items || data.result?.spaces || data;
+  return Array.isArray(spaces) ? spaces : [];
+}
+
+// 获取空间根目录节点ID
+async function getRootNode(spaceId) {
+  const token = await getNewAccessToken();
+  const resp = await fetch(`https://api.dingtalk.com/v1.0/drive/spaces/${spaceId}/nodes?nodeId=root`, {
+    headers: { 'x-acs-dingtalk-access-token': token },
+  });
+  const data = await parseJsonResponse(resp, '获取根目录');
+  return data.nodeId || data.id || data;
+}
+
+// 创建文件夹
+async function createFolder(spaceId, parentNodeId, name) {
+  const token = await getNewAccessToken();
+  const resp = await fetch(`https://api.dingtalk.com/v1.0/drive/spaces/${spaceId}/files/createFolder`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-acs-dingtalk-access-token': token,
+    },
+    body: JSON.stringify({
+      name,
+      parentId: parentNodeId,
+    }),
+  });
+  const data = await parseJsonResponse(resp, '创建文件夹');
+  return data;
+}
+
 async function sendGroupMessage(message) {
   const { webhookUrl } = config.dingtalk;
   if (!webhookUrl) {
@@ -275,4 +314,7 @@ module.exports = {
   uploadFile,
   sendGroupMessage,
   verifySignature,
+  getSpaces,
+  getRootNode,
+  createFolder,
 };

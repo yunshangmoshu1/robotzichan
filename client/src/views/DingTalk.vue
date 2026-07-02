@@ -28,7 +28,10 @@
 
           <el-form label-width="120px" style="max-width: 600px;">
             <el-form-item label="钉钉文件夹ID">
-              <el-input v-model="autoSyncForm.folder_id" placeholder="钉钉云盘文件夹 ID（必填）" />
+              <div style="display: flex; gap: 8px; width: 100%;">
+                <el-input v-model="autoSyncForm.folder_id" placeholder="钉钉云盘文件夹 ID（必填）" style="flex: 1;" />
+                <el-button @click="showCreateFolder = true">创建新文件夹</el-button>
+              </div>
             </el-form-item>
             <el-form-item label="同步间隔">
               <el-input-number v-model="autoSyncForm.interval" :min="1" :max="1440" :step="1" />
@@ -205,6 +208,24 @@
         </el-card>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- 创建文件夹对话框 -->
+    <el-dialog v-model="showCreateFolder" title="创建钉钉云盘文件夹" width="400px">
+      <el-form label-width="80px">
+        <el-form-item label="云盘空间">
+          <el-select v-model="createFolderForm.space_id" placeholder="选择空间" style="width: 100%;">
+            <el-option v-for="s in spaces" :key="s.spaceId || s.id" :label="s.name" :value="s.spaceId || s.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="文件夹名">
+          <el-input v-model="createFolderForm.name" placeholder="输入文件夹名称" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateFolder = false">取消</el-button>
+        <el-button type="primary" @click="doCreateFolder" :loading="createFolderLoading">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -230,6 +251,47 @@ const autoSyncForm = reactive({
 const autoSyncStatus = ref({ enabled: false, running: false, lastSync: null, lastResult: null, config: {} })
 const autoSyncLoading = ref(false)
 const syncTriggering = ref(false)
+
+// 创建文件夹
+const showCreateFolder = ref(false)
+const createFolderForm = reactive({ space_id: '', name: 'ROBO_TRACK自动同步' })
+const spaces = ref([])
+const createFolderLoading = ref(false)
+
+async function loadSpaces() {
+  try {
+    const res = await dingtalkApi.getSpaces()
+    spaces.value = res.spaces || []
+    if (spaces.value.length === 1) {
+      createFolderForm.space_id = spaces.value[0].spaceId || spaces.value[0].id
+    }
+  } catch (e) {
+    ElMessage.error('获取云盘空间失败')
+  }
+}
+
+async function doCreateFolder() {
+  if (!createFolderForm.space_id || !createFolderForm.name) {
+    ElMessage.warning('请选择空间并输入文件夹名称')
+    return
+  }
+  createFolderLoading.value = true
+  try {
+    const res = await dingtalkApi.createFolder(createFolderForm)
+    const nodeId = res.nodeId || res.id
+    if (nodeId) {
+      autoSyncForm.folder_id = nodeId
+      ElMessage.success(`文件夹创建成功，ID: ${nodeId}`)
+      showCreateFolder.value = false
+    } else {
+      ElMessage.warning('文件夹已创建，但未返回ID，请手动填写')
+    }
+  } catch (e) {
+    ElMessage.error('创建文件夹失败: ' + (e.response?.data?.error || e.message))
+  } finally {
+    createFolderLoading.value = false
+  }
+}
 
 // 手动导入（钉钉 → 网站）
 const importForm = reactive({
@@ -399,5 +461,6 @@ onMounted(async () => {
     filterOptions.value = filters
   } catch (e) { /* ignore */ }
   loadAutoSyncStatus()
+  loadSpaces()
 })
 </script>
