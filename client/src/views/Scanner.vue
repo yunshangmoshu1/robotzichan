@@ -14,6 +14,9 @@
                 <el-button :type="isScanning ? 'danger' : 'primary'" size="small" @click="toggleScan">
                   {{ isScanning ? '停止扫描' : '开始扫描' }}
                 </el-button>
+                <el-button type="success" size="small" @click="capturePhoto" :loading="photoLoading">
+                  <el-icon><Camera /></el-icon> 拍照识别
+                </el-button>
               </el-button-group>
             </div>
           </template>
@@ -21,6 +24,17 @@
             <div id="scanner-reader" style="width: 100%;"></div>
           </div>
           <p v-if="scanError" style="color: #f56c6c; margin-top: 12px;">{{ scanError }}</p>
+
+          <!-- 拍照预览 -->
+          <div v-if="photoPreview" style="margin-top: 12px;">
+            <img :src="photoPreview" style="width: 100%; border-radius: 8px;" />
+            <p style="text-align: center; margin-top: 8px; color: #909399; font-size: 13px;">
+              {{ photoStatus }}
+            </p>
+          </div>
+
+          <!-- 隐藏的摄像头输入 -->
+          <input ref="photoInput" type="file" accept="image/*" capture="environment" style="display: none;" @change="handlePhotoCapture" />
         </el-card>
 
         <!-- 手动输入 -->
@@ -149,9 +163,13 @@ import { robotsApi } from '@/api/robots'
 import { defaultStatusOptions, statusColors, statusLabels } from '@/utils/format'
 
 const router = useRouter()
-const { isScanning, error: scanError, startScanner, stopScanner } = useScanner()
+const { isScanning, error: scanError, startScanner, stopScanner, decodeFromImage } = useScanner()
 
 const manualCode = ref('')
+const photoInput = ref(null)
+const photoLoading = ref(false)
+const photoPreview = ref('')
+const photoStatus = ref('')
 const scanResult = ref(null)
 const searched = ref(false)
 const selectedRobotId = ref(null)
@@ -170,6 +188,39 @@ function toggleScan() {
     stopScanner()
   } else {
     startScanner('scanner-reader', onScanSuccess)
+  }
+}
+
+// 拍照识别
+function capturePhoto() {
+  photoInput.value?.click()
+}
+
+async function handlePhotoCapture(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  photoLoading.value = true
+  photoPreview.value = URL.createObjectURL(file)
+  photoStatus.value = '正在识别...'
+
+  try {
+    const code = await decodeFromImage(file)
+    photoStatus.value = `识别成功: ${code}`
+
+    // 添加到扫描历史
+    scanHistory.value.unshift({
+      code,
+      time: new Date().toLocaleTimeString(),
+    })
+    if (scanHistory.value.length > 20) scanHistory.value.pop()
+
+    await searchByCode(code)
+  } catch (err) {
+    photoStatus.value = '未识别到条形码，请手动输入'
+  } finally {
+    photoLoading.value = false
+    event.target.value = '' // 重置 input
   }
 }
 
