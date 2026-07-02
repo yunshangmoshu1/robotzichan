@@ -114,13 +114,11 @@ async function syncToDingTalk() {
     return { direction: 'export', count: 0 };
   }
 
-  // 2. 生成 Excel 并上传
+  // 2. 生成 Excel 并上传（folderId 可选，不填则上传到默认位置）
   const xlsxBuffer = excelService.generateXlsx(robots);
   const fileName = `自动同步_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
-  if (folderId) {
-    await dingtalkService.uploadFile(xlsxBuffer, fileName, folderId);
-  }
+  await dingtalkService.uploadFile(xlsxBuffer, fileName, folderId || '');
 
   // 3. 记录日志
   await supabase.from('dingtalk_sync_logs').insert({
@@ -144,14 +142,9 @@ async function runSync() {
 
   running = true;
   try {
-    const { folderId } = getSyncConfig();
-    if (folderId) {
-      const result = await syncToDingTalk();
-      lastSync = new Date().toISOString();
-      lastResult = { success: true, time: lastSync, results: [result] };
-    } else {
-      console.log('[自动同步] 未配置文件夹ID，跳过导出');
-    }
+    const result = await syncToDingTalk();
+    lastSync = new Date().toISOString();
+    lastResult = { success: true, time: lastSync, results: [result] };
   } catch (err) {
     lastResult = { success: false, error: err.message };
     console.error('[自动同步] 同步失败:', err.message);
