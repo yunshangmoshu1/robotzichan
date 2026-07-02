@@ -1,14 +1,6 @@
 <template>
   <div class="sidebar" :class="{ collapsed, open }">
     <div class="logo">
-      <div class="logo-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7" height="7" rx="1" />
-          <rect x="14" y="3" width="7" height="7" rx="1" />
-          <rect x="3" y="14" width="7" height="7" rx="1" />
-          <rect x="14" y="14" width="7" height="7" rx="1" />
-        </svg>
-      </div>
       <div v-if="!collapsed" class="logo-copy">
         <span class="logo-text">ROBO::TRACK</span>
         <span class="logo-subtitle">机器人资产管理</span>
@@ -81,19 +73,6 @@ function handleMenuSelect() {
 .sidebar {
   .logo {
     padding: 0 18px;
-    gap: 10px;
-  }
-
-  .logo-icon {
-    width: 34px;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--text-primary);
-    border-radius: 8px;
-    color: #fff;
-    flex-shrink: 0;
   }
 
   .logo-copy {
