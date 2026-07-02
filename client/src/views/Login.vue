@@ -113,11 +113,6 @@
             <el-link type="primary" :underline="false" @click="isRegister = true">注册新账号</el-link>
           </template>
         </div>
-
-        <div v-if="!isRegister" class="login-hint">
-          <el-icon><InfoFilled /></el-icon>
-          <span>默认账号：admin / admin123</span>
-        </div>
       </div>
 
       <div class="login-footer">
@@ -139,7 +134,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { InfoFilled, UserFilled } from '@element-plus/icons-vue'
+import { UserFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { loginRules } from '@/utils/validators'
 import { ElMessage } from 'element-plus'
@@ -296,15 +291,6 @@ h1 {
   margin-top: 16px;
   font-size: 14px;
   color: #6d7b84;
-}
-
-.login-hint {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 18px;
-  color: #72818a;
-  font-size: 13px;
 }
 
 .login-footer {
