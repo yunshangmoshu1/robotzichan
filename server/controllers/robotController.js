@@ -37,6 +37,14 @@ exports.list = async (req, res) => {
     const { data, error, count } = await query;
     if (error) throw error;
 
+    // 把"已出库"排到最后
+    if (data && data.length > 0) {
+      const inStock = data.filter(r => r.status !== '已出库');
+      const outOfStock = data.filter(r => r.status === '已出库');
+      data.length = 0;
+      data.push(...inStock, ...outOfStock);
+    }
+
     res.json({
       data,
       total: count,
