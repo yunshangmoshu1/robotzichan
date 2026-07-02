@@ -10,4 +10,10 @@ router.post('/export', ctrl.exportToDingTalk);
 router.post('/notify', ctrl.sendNotification);
 router.get('/sync-logs', ctrl.getSyncLogs);
 
+// 自动同步
+router.post('/auto-sync/start', ctrl.startAutoSync);
+router.post('/auto-sync/stop', ctrl.stopAutoSync);
+router.get('/auto-sync/status', ctrl.getAutoSyncStatus);
+router.post('/auto-sync/trigger', ctrl.triggerSync);
+
 module.exports = router;

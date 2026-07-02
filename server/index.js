@@ -36,4 +36,18 @@ app.use(errorHandler);
 // 启动服务器
 app.listen(config.server.port, () => {
   logger.info(`ROBO::TRACK 2.0 后端启动成功: http://localhost:${config.server.port}`);
+
+  // 如果配置了自动同步文档ID，自动启动定时同步
+  if (process.env.DINGTALK_SYNC_DOCUMENT_ID) {
+    config.syncConfig = {
+      documentId: process.env.DINGTALK_SYNC_DOCUMENT_ID,
+      sheetName: process.env.DINGTALK_SYNC_SHEET_NAME || '',
+      operatorId: process.env.DINGTALK_OPERATOR_ID || '',
+      folderId: process.env.DINGTALK_SYNC_FOLDER_ID || '',
+      interval: parseInt(process.env.DINGTALK_SYNC_INTERVAL) || 30,
+    };
+    const scheduler = require('./services/scheduler');
+    scheduler.start(config.syncConfig.interval);
+    logger.info(`自动同步已启动，间隔 ${config.syncConfig.interval} 分钟`);
+  }
 });

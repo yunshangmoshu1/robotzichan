@@ -5,6 +5,90 @@
     </div>
 
     <el-tabs v-model="activeTab">
+      <!-- 自动同步 Tab -->
+      <el-tab-pane label="⏱ 自动同步" name="auto">
+        <el-card>
+          <template #header>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span>定时自动同步</span>
+              <el-tag :type="autoSyncStatus.enabled ? 'success' : 'info'" size="small">
+                {{ autoSyncStatus.enabled ? '运行中' : '未启动' }}
+              </el-tag>
+            </div>
+          </template>
+
+          <el-alert type="info" :closable="false" style="margin-bottom: 20px;">
+            <template #title>
+              <div>配置钉钉多维表文档ID后，系统会定时自动同步数据（双向：从钉钉导入 + 导出到钉钉）。</div>
+              <div style="margin-top: 4px; font-size: 12px; color: #909399;">
+                需要先在钉钉开放平台开通 Notable API 权限，或使用电子表格 API。
+              </div>
+            </template>
+          </el-alert>
+
+          <el-form label-width="100px" style="max-width: 600px;">
+            <el-form-item label="文档ID">
+              <el-input v-model="autoSyncForm.document_id" placeholder="钉钉多维表文档 ID" />
+            </el-form-item>
+            <el-form-item label="工作表名/ID">
+              <el-input v-model="autoSyncForm.sheet_name" placeholder="留空则使用第一个工作表" />
+            </el-form-item>
+            <el-form-item label="操作人ID">
+              <el-input v-model="autoSyncForm.operator_id" placeholder="钉钉 operatorId（可选）" />
+            </el-form-item>
+            <el-form-item label="导出文件夹">
+              <el-input v-model="autoSyncForm.folder_id" placeholder="钉钉云盘文件夹 ID（可选，不填则不同步导出）" />
+            </el-form-item>
+            <el-form-item label="同步间隔">
+              <el-input-number v-model="autoSyncForm.interval" :min="5" :max="1440" :step="5" />
+              <span style="margin-left: 8px; color: #909399;">分钟</span>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="startAutoSync" :loading="autoSyncLoading">
+                {{ autoSyncStatus.enabled ? '更新配置并重启' : '启动自动同步' }}
+              </el-button>
+              <el-button v-if="autoSyncStatus.enabled" type="danger" @click="stopAutoSync" :loading="autoSyncLoading">
+                停止
+              </el-button>
+              <el-button @click="triggerSyncNow" :loading="syncTriggering">
+                立即同步一次
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <!-- 同步状态 -->
+          <el-divider />
+          <h4 style="margin-bottom: 12px;">同步状态</h4>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="状态">
+              <el-tag :type="autoSyncStatus.enabled ? 'success' : 'info'" size="small">
+                {{ autoSyncStatus.enabled ? '运行中' : '未启动' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="上次同步">
+              {{ autoSyncStatus.lastSync ? formatDateTime(autoSyncStatus.lastSync) : '尚未同步' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="同步间隔">
+              {{ autoSyncStatus.config?.interval || autoSyncForm.interval }} 分钟
+            </el-descriptions-item>
+            <el-descriptions-item label="文档ID">
+              {{ autoSyncStatus.config?.documentId || autoSyncForm.document_id || '未配置' }}
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <div v-if="autoSyncStatus.lastResult" style="margin-top: 12px;">
+            <el-tag :type="autoSyncStatus.lastResult.success ? 'success' : 'danger'" size="small">
+              {{ autoSyncStatus.lastResult.success ? '上次同步成功' : '上次同步失败' }}
+            </el-tag>
+            <span v-if="autoSyncStatus.lastResult.results" style="margin-left: 8px; font-size: 13px; color: #909399;">
+              <template v-for="r in autoSyncStatus.lastResult.results" :key="r.direction">
+                {{ r.direction === 'import' ? '导入' : '导出' }}: {{ r.error ? '失败 - ' + r.error : r.count + ' 条' }}
+              </template>
+            </span>
+          </div>
+        </el-card>
+      </el-tab-pane>
+
       <!-- 数据同步 Tab -->
       <el-tab-pane label="数据同步" name="sync">
         <el-card>
@@ -318,8 +402,20 @@ import { formatDateTime } from '@/utils/format'
 import { useExport } from '@/composables/useExport'
 
 const { exportToXlsx } = useExport()
-const activeTab = ref('sync')
+const activeTab = ref('auto')
 const filterOptions = ref({ types: [] })
+
+// 自动同步
+const autoSyncForm = reactive({
+  document_id: '',
+  sheet_name: '',
+  operator_id: '',
+  folder_id: '',
+  interval: 30,
+})
+const autoSyncStatus = ref({ enabled: false, running: false, lastSync: null, lastResult: null, config: {} })
+const autoSyncLoading = ref(false)
+const syncTriggering = ref(false)
 
 // 导入
 const importStep = ref(0)
@@ -668,6 +764,63 @@ async function sendNotify() {
   }
 }
 
+// ---- 自动同步 ----
+async function loadAutoSyncStatus() {
+  try {
+    const status = await dingtalkApi.getAutoSyncStatus()
+    autoSyncStatus.value = status
+    // 用服务端配置回填表单
+    if (status.config) {
+      if (status.config.documentId) autoSyncForm.document_id = status.config.documentId
+      if (status.config.sheetName) autoSyncForm.sheet_name = status.config.sheetName
+      if (status.config.operatorId) autoSyncForm.operator_id = status.config.operatorId
+      if (status.config.folderId) autoSyncForm.folder_id = status.config.folderId
+      if (status.config.interval) autoSyncForm.interval = status.config.interval
+    }
+  } catch (e) { /* ignore */ }
+}
+
+async function startAutoSync() {
+  if (!autoSyncForm.document_id) {
+    ElMessage.warning('请输入钉钉文档ID')
+    return
+  }
+  autoSyncLoading.value = true
+  try {
+    await dingtalkApi.startAutoSync(autoSyncForm)
+    ElMessage.success('自动同步已启动')
+    await loadAutoSyncStatus()
+  } catch (e) {
+    ElMessage.error('启动失败')
+  } finally {
+    autoSyncLoading.value = false
+  }
+}
+
+async function stopAutoSync() {
+  autoSyncLoading.value = true
+  try {
+    await dingtalkApi.stopAutoSync()
+    ElMessage.success('自动同步已停止')
+    await loadAutoSyncStatus()
+  } finally {
+    autoSyncLoading.value = false
+  }
+}
+
+async function triggerSyncNow() {
+  syncTriggering.value = true
+  try {
+    await dingtalkApi.triggerSync()
+    ElMessage.success('同步已触发，稍后刷新查看结果')
+    setTimeout(loadAutoSyncStatus, 3000)
+  } catch (e) {
+    ElMessage.error('触发失败')
+  } finally {
+    syncTriggering.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const [logs, filters] = await Promise.all([
@@ -677,5 +830,6 @@ onMounted(async () => {
     syncLogs.value = logs.data || []
     filterOptions.value = filters
   } catch (e) { /* ignore */ }
+  loadAutoSyncStatus()
 })
 </script>

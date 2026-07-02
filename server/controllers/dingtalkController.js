@@ -1,6 +1,7 @@
 const dingtalkService = require('../services/dingtalk');
 const excelService = require('../services/excel');
 const supabase = require('../services/supabase');
+const scheduler = require('../services/scheduler');
 
 // 从钉钉导入表格
 exports.importFromDingTalk = async (req, res) => {
@@ -206,6 +207,53 @@ exports.getSyncLogs = async (req, res) => {
     res.json({ data });
   } catch (err) {
     res.status(500).json({ error: '获取同步日志失败: ' + err.message });
+  }
+};
+
+// ---- 自动同步控制 ----
+
+// 启动自动同步
+exports.startAutoSync = async (req, res) => {
+  try {
+    const { interval, document_id, sheet_name, operator_id, folder_id } = req.body;
+
+    // 保存配置到内存（重启后需重新配置）
+    const config = require('../config');
+    config.syncConfig = {
+      documentId: document_id || config.syncConfig?.documentId || '',
+      sheetName: sheet_name || config.syncConfig?.sheetName || '',
+      operatorId: operator_id || config.syncConfig?.operatorId || '',
+      folderId: folder_id || config.syncConfig?.folderId || '',
+      interval: interval || 30,
+    };
+
+    const result = scheduler.start(interval || 30);
+    res.json({ message: '自动同步已启动', ...result, config: config.syncConfig });
+  } catch (err) {
+    res.status(500).json({ error: '启动自动同步失败: ' + err.message });
+  }
+};
+
+// 停止自动同步
+exports.stopAutoSync = async (req, res) => {
+  const result = scheduler.stop();
+  res.json({ message: '自动同步已停止', ...result });
+};
+
+// 获取自动同步状态
+exports.getAutoSyncStatus = async (req, res) => {
+  const status = scheduler.getStatus();
+  res.json(status);
+};
+
+// 手动触发一次同步
+exports.triggerSync = async (req, res) => {
+  try {
+    // 异步执行，立即返回
+    scheduler.runSync();
+    res.json({ message: '同步已触发，请稍后查看结果' });
+  } catch (err) {
+    res.status(500).json({ error: '触发同步失败: ' + err.message });
   }
 };
 
