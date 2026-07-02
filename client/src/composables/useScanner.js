@@ -1,5 +1,77 @@
 import { ref, onUnmounted } from 'vue'
+import Tesseract from 'tesseract.js'
 import { readBarcodesFromImageData, readBarcodesFromImageFile } from 'zxing-wasm'
+
+let worker = null
+let workerReady = false
+
+// 初始化 OCR Worker（后台预加载）
+async function initOCRWorker() {
+  if (workerReady) return
+  try {
+    worker = await Tesseract.createWorker('eng', 1, {})
+    workerReady = true
+  } catch (e) {
+    console.error('OCR worker 初始化失败:', e)
+  }
+}
+
+// 从图片中识别数字
+async function recognizeNumbers(imageSource) {
+  // 先尝试条码/QR 解码（zxing-wasm，速度快）
+  try {
+    let results
+    if (imageSource instanceof File || imageSource instanceof Blob) {
+      results = await readBarcodesFromImageFile(imageSource, {
+        tryHarder: true,
+        tryRotate: true,
+        tryInvert: true,
+      })
+    } else if (imageSource instanceof ImageData) {
+      results = await readBarcodesFromImageData(imageSource, {
+        tryHarder: true,
+        tryRotate: true,
+        tryInvert: true,
+      })
+    }
+    if (results && results.length > 0 && results[0].text) {
+      return { code: results[0].text, source: 'barcode' }
+    }
+  } catch (e) {
+    // 条码解码失败，继续 OCR
+  }
+
+  // 条码解码失败，用 OCR 识别文字
+  await initOCRWorker()
+  if (!worker) throw new Error('OCR 未就绪')
+
+  // 把图片源转为可识别的格式
+  let image
+  if (imageSource instanceof File || imageSource instanceof Blob) {
+    image = imageSource
+  } else if (imageSource instanceof ImageData) {
+    // ImageData → canvas → Blob
+    const canvas = document.createElement('canvas')
+    canvas.width = imageSource.width
+    canvas.height = imageSource.height
+    const ctx = canvas.getContext('2d')
+    ctx.putImageData(imageSource, 0, 0)
+    image = await new Promise(r => canvas.toBlob(r, 'image/png'))
+  }
+
+  const result = await worker.recognize(image)
+  const text = result.data.text || ''
+
+  // 从 OCR 文本中提取数字（连续数字串）
+  const numbers = text.match(/\d{3,}/g)
+  if (numbers && numbers.length > 0) {
+    // 取最长的数字串（最可能是条码号码）
+    const best = numbers.sort((a, b) => b.length - a.length)[0]
+    return { code: best, source: 'ocr', rawText: text.trim() }
+  }
+
+  throw new Error('未识别到数字')
+}
 
 export function useScanner() {
   const isScanning = ref(false)
@@ -8,8 +80,9 @@ export function useScanner() {
   const cameraStream = ref(null)
   let scanTimer = null
   let videoEl = null
+  let canvas = null
+  let ctx = null
 
-  // 启动摄像头实时扫描
   async function startScanner(containerId, onScan) {
     error.value = null
 
@@ -20,7 +93,6 @@ export function useScanner() {
     }
 
     try {
-      // 申请后置摄像头
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment',
@@ -30,7 +102,6 @@ export function useScanner() {
       })
       cameraStream.value = stream
 
-      // 创建 video 元素
       videoEl = document.createElement('video')
       videoEl.srcObject = stream
       videoEl.autoplay = true
@@ -45,45 +116,36 @@ export function useScanner() {
       await videoEl.play()
       isScanning.value = true
 
-      // 每 500ms 检测一次（平衡性能和灵敏度）
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      // 预热 OCR worker
+      initOCRWorker()
 
+      canvas = document.createElement('canvas')
+      ctx = canvas.getContext('2d', { willReadFrequently: true })
+
+      // 每 1.5 秒检测一帧（OCR 较重，不能太频繁）
       scanTimer = setInterval(async () => {
         if (!videoEl || !isScanning.value) return
 
-        // 取当前视频帧
         canvas.width = videoEl.videoWidth
         canvas.height = videoEl.videoHeight
         ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height)
 
         try {
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-          const results = await readBarcodesFromImageData(imageData, {
-            tryHarder: true,
-            tryRotate: true,
-            tryInvert: true,
-            tryDownscale: true,
-            maxNumberOfSymbols: 1,
-          })
+          const { code } = await recognizeNumbers(imageData)
 
-          if (results && results.length > 0) {
-            const code = results[0].text
-            if (!code) return
+          // 去重
+          const now = Date.now()
+          if (lastResult.value === code && now - (lastResult._time || 0) < 2000) return
+          lastResult.value = code
+          lastResult._time = now
 
-            // 去重：2 秒内相同结果不重复触发
-            const now = Date.now()
-            if (lastResult.value === code && now - (lastResult._time || 0) < 2000) return
-            lastResult.value = code
-            lastResult._time = now
-
-            if (navigator.vibrate) navigator.vibrate(200)
-            if (onScan) onScan(code)
-          }
+          if (navigator.vibrate) navigator.vibrate(200)
+          if (onScan) onScan(code)
         } catch (e) {
-          // 解码失败，继续扫描
+          // 未识别到，继续扫描
         }
-      }, 500)
+      }, 1500)
     } catch (err) {
       error.value = '无法启动摄像头: ' + (err.message || err)
     }
@@ -108,19 +170,10 @@ export function useScanner() {
     }
   }
 
-  // 从图片文件解码（拍照识别）
+  // 拍照识别
   async function decodeFromImage(file) {
-    const results = await readBarcodesFromImageFile(file, {
-      tryHarder: true,
-      tryRotate: true,
-      tryInvert: true,
-      tryDownscale: true,
-    })
-
-    if (results && results.length > 0 && results[0].text) {
-      return results[0].text
-    }
-    throw new Error('未识别到条形码')
+    const { code } = await recognizeNumbers(file)
+    return code
   }
 
   onUnmounted(() => {
