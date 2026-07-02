@@ -135,7 +135,7 @@ async function syncToDingTalk() {
   return { direction: 'export', count: robots.length };
 }
 
-// 执行一次完整同步（双向）
+// 自动同步：网站 → 钉钉（单向，定时任务用）
 async function runSync() {
   if (running) {
     console.log('[自动同步] 上一次同步尚未完成，跳过');
@@ -143,35 +143,40 @@ async function runSync() {
   }
 
   running = true;
-  const results = [];
-
   try {
-    // 从钉钉导入
-    try {
-      const importResult = await syncFromDingTalk();
-      results.push(importResult);
-    } catch (err) {
-      console.error('[自动同步] 从钉钉导入失败:', err.message);
-      results.push({ direction: 'import', error: err.message });
-    }
-
-    // 导出到钉钉（如果配置了 folderId）
     const { folderId } = getSyncConfig();
     if (folderId) {
-      try {
-        const exportResult = await syncToDingTalk();
-        results.push(exportResult);
-      } catch (err) {
-        console.error('[自动同步] 导出到钉钉失败:', err.message);
-        results.push({ direction: 'export', error: err.message });
-      }
+      const result = await syncToDingTalk();
+      lastSync = new Date().toISOString();
+      lastResult = { success: true, time: lastSync, results: [result] };
+    } else {
+      console.log('[自动同步] 未配置文件夹ID，跳过导出');
     }
-
-    lastSync = new Date().toISOString();
-    lastResult = { success: true, results };
   } catch (err) {
     lastResult = { success: false, error: err.message };
     console.error('[自动同步] 同步失败:', err.message);
+  } finally {
+    running = false;
+  }
+}
+
+// 手动导入：钉钉 → 网站（单向，手动触发）
+async function runImport() {
+  if (running) {
+    console.log('[手动导入] 上一次同步尚未完成，请稍后再试');
+    return { error: '上一次同步尚未完成' };
+  }
+
+  running = true;
+  try {
+    const result = await syncFromDingTalk();
+    lastSync = new Date().toISOString();
+    lastResult = { success: true, time: lastSync, results: [result] };
+    return result;
+  } catch (err) {
+    lastResult = { success: false, error: err.message };
+    console.error('[手动导入] 从钉钉导入失败:', err.message);
+    return { error: err.message };
   } finally {
     running = false;
   }
@@ -232,4 +237,4 @@ function getStatus() {
   };
 }
 
-module.exports = { start, stop, getStatus, runSync };
+module.exports = { start, stop, getStatus, runSync, runImport };

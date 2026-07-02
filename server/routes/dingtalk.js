@@ -16,4 +16,7 @@ router.post('/auto-sync/stop', ctrl.stopAutoSync);
 router.get('/auto-sync/status', ctrl.getAutoSyncStatus);
 router.post('/auto-sync/trigger', ctrl.triggerSync);
 
+// 手动导入（钉钉 → 网站）
+router.post('/import-from-dingtalk', ctrl.triggerImport);
+
 module.exports = router;

@@ -246,14 +246,26 @@ exports.getAutoSyncStatus = async (req, res) => {
   res.json(status);
 };
 
-// 手动触发一次同步
+// 手动触发一次同步：网站 → 钉钉
 exports.triggerSync = async (req, res) => {
   try {
-    // 异步执行，立即返回
     scheduler.runSync();
-    res.json({ message: '同步已触发，请稍后查看结果' });
+    res.json({ message: '导出已触发，请稍后查看结果' });
   } catch (err) {
-    res.status(500).json({ error: '触发同步失败: ' + err.message });
+    res.status(500).json({ error: '触发导出失败: ' + err.message });
+  }
+};
+
+// 手动触发导入：钉钉 → 网站
+exports.triggerImport = async (req, res) => {
+  try {
+    const result = await scheduler.runImport();
+    if (result.error) {
+      return res.status(409).json({ error: result.error });
+    }
+    res.json({ message: '导入完成', ...result });
+  } catch (err) {
+    res.status(500).json({ error: '导入失败: ' + err.message });
   }
 };
 
