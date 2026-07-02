@@ -407,11 +407,11 @@ const filterOptions = ref({ types: [] })
 
 // 自动同步
 const autoSyncForm = reactive({
-  document_id: '',
-  sheet_name: '',
-  operator_id: '',
+  document_id: 'MyQA2dXW7ZObXrq5hZjnyDk28zlwrZgb',
+  sheet_name: 'WzQTWCb',
+  operator_id: '16kd04D5P0iPWNQ6iS84ydVwiEiE',
   folder_id: '',
-  interval: 30,
+  interval: 1,
 })
 const autoSyncStatus = ref({ enabled: false, running: false, lastSync: null, lastResult: null, config: {} })
 const autoSyncLoading = ref(false)
