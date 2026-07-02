@@ -197,7 +197,7 @@ function getSyncConfig() {
 function start(intervalMinutes) {
   stop();
 
-  if (!intervalMinutes || intervalMinutes < 5) {
+  if (!intervalMinutes || intervalMinutes < 1) {
     intervalMinutes = 30; // 默认 30 分钟
   }
 
