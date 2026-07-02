@@ -27,7 +27,15 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="条形码" prop="barcode">
-              <el-input v-model="form.barcode" placeholder="输入条形码数字" />
+              <el-input v-model="form.barcode" placeholder="输入条形码数字">
+                <template #append>
+                  <el-tooltip content="条形码与序列号相同时自动同步" placement="top">
+                    <el-button :type="syncBarcode ? 'primary' : 'info'" @click="syncBarcode = !syncBarcode">
+                      <el-icon><Link /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                </template>
+              </el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -106,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useRobotsStore } from '@/stores/robots'
@@ -120,6 +128,7 @@ const robotsStore = useRobotsStore()
 const isEdit = computed(() => !!route.params.id)
 const formRef = ref(null)
 const saving = ref(false)
+const syncBarcode = ref(true)
 const filterOptions = ref({ types: [], statuses: [], locations: [], persons: [] })
 const statusOptions = computed(() => filterOptions.value.statuses?.length ? filterOptions.value.statuses : defaultStatusOptions)
 
@@ -131,6 +140,14 @@ const defaultForm = {
 
 const form = reactive({ ...defaultForm })
 
+// 条形码与序列号自动同步
+watch(() => form.barcode, (val) => {
+  if (syncBarcode.value && val) form.serial = val
+})
+watch(() => form.serial, (val) => {
+  if (syncBarcode.value && val) form.barcode = val
+})
+
 async function loadFilterOptions() {
   try {
     filterOptions.value = await robotsStore.fetchFilterOptions()
@@ -139,6 +156,7 @@ async function loadFilterOptions() {
 
 async function loadRobot() {
   if (!isEdit.value) return
+  syncBarcode.value = false // 编辑时默认关闭同步，避免覆盖已有不同值
   const robot = await robotsStore.fetchById(route.params.id)
   Object.assign(form, robot)
 }
