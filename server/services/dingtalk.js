@@ -204,24 +204,92 @@ async function getBitableData(appToken, tableName, operatorId) {
 }
 
 async function uploadFile(fileBuffer, fileName, folderId) {
-  const token = await getAccessToken();
+  // 钉钉文件上传接口已变更，改为直接写入多维表
+  throw new Error('文件上传接口已废弃，请使用数据同步功能直接写入多维表');
+}
 
-  const formData = new FormData();
-  formData.append('file', new Blob([fileBuffer]), fileName);
-  if (folderId) formData.append('folder_id', folderId);
+// 写入数据到钉钉多维表（同步网站数据到钉钉）
+async function writeDataToNotable(baseId, sheetName, operatorId, data) {
+  const token = await getNewAccessToken();
+  const baseUrl = `https://api.dingtalk.com/v1.0/notable/bases/${encodeURIComponent(baseId)}`;
+  const operatorQuery = buildOperatorQuery(operatorId);
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-acs-dingtalk-access-token': token,
+  };
 
-  const resp = await fetch('https://api.dingtalk.com/v1.0/file/upload', {
-    method: 'POST',
-    headers: { 'x-acs-access-token': token },
-    body: formData,
-  });
+  // 1. 获取数据表列表
+  const sheetsResp = await fetch(`${baseUrl}/sheets?${operatorQuery}`, { headers });
+  const sheetsData = await parseJsonResponse(sheetsResp, '获取钉钉 AI 表格数据表');
+  const sheets = pickArray(sheetsData, ['sheets', 'items', 'list']);
 
-  const data = await parseJsonResponse(resp, '上传文件到钉钉');
-  if (!data.url) {
-    throw new Error('文件上传失败: ' + JSON.stringify(data));
+  if (!sheets.length) {
+    throw new Error('AI 表格中没有找到任何数据表');
   }
 
-  return data;
+  const sheet = sheetName
+    ? sheets.find(s => s.name === sheetName || s.sheetName === sheetName || s.id === sheetName)
+    : sheets[0];
+
+  if (!sheet) throw new Error(`未找到数据表: ${sheetName}`);
+
+  const sheetId = sheet.id || sheet.sheetId || sheet.name;
+
+  // 2. 清空现有数据（分批获取并删除）
+  let allExistingRecords = [];
+  let nextToken;
+  do {
+    const recordsResp = await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/list?${operatorQuery}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ maxResults: 100, ...(nextToken ? { nextToken } : {}) }),
+    });
+    const recordsData = await parseJsonResponse(recordsResp, '获取现有记录');
+    allExistingRecords.push(...pickArray(recordsData, ['records', 'items', 'list']));
+    nextToken = recordsData.nextToken || recordsData.nextPageToken;
+  } while (nextToken);
+
+  if (allExistingRecords.length > 0) {
+    const recordIds = allExistingRecords.map(r => r.recordId || r.id).filter(Boolean);
+    // 分批删除（每批最多 100 条）
+    for (let i = 0; i < recordIds.length; i += 100) {
+      const batch = recordIds.slice(i, i + 100);
+      await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchDelete?${operatorQuery}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ recordIds: batch }),
+      });
+    }
+    console.log(`[自动同步] 已删除 ${recordIds.length} 条旧记录`);
+  }
+
+  // 3. 批量写入新数据
+  const fields = ['类型', '序列号', '状态', '负责人', 'IP地址', '位置', '条形码', '部门', '备注'];
+  const records = data.map(robot => ({
+    fields: {
+      '类型': robot.type || '',
+      '序列号': robot.serial || '',
+      '状态': robot.status || '',
+      '负责人': robot.person || '',
+      'IP地址': robot.ip || '',
+      '位置': robot.location || '',
+      '条形码': robot.barcode || '',
+      '部门': robot.department || '',
+      '备注': robot.notes || '',
+    }
+  }));
+
+  // 分批写入（每批最多 100 条）
+  for (let i = 0; i < records.length; i += 100) {
+    const batch = records.slice(i, i + 100);
+    await fetch(`${baseUrl}/sheets/${encodeURIComponent(sheetId)}/records/batchCreate?${operatorQuery}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ records: batch }),
+    });
+  }
+
+  return { count: data.length, sheetId };
 }
 
 // 获取云盘空间列表
@@ -312,6 +380,7 @@ module.exports = {
   getNotableData,
   getBitableData,
   uploadFile,
+  writeDataToNotable,
   sendGroupMessage,
   verifySignature,
   getSpaces,

@@ -94,11 +94,16 @@ async function syncFromDingTalk() {
   return { direction: 'import', count: data.length };
 }
 
-// 导出数据到钉钉
+// 导出数据到钉钉（直接写入多维表）
 async function syncToDingTalk() {
-  const { folderId } = getSyncConfig();
+  const config = require('../config');
+  const { documentId, sheetName, operatorId } = getSyncConfig();
 
-  console.log('[自动同步] 开始导出到钉钉...');
+  if (!documentId) {
+    throw new Error('未配置钉钉文档ID，无法导出');
+  }
+
+  console.log('[自动同步] 开始导出到钉钉多维表...');
 
   // 1. 查询数据
   const { data: robots, error } = await supabase
@@ -114,16 +119,13 @@ async function syncToDingTalk() {
     return { direction: 'export', count: 0 };
   }
 
-  // 2. 生成 Excel 并上传（folderId 可选，不填则上传到默认位置）
-  const xlsxBuffer = excelService.generateXlsx(robots);
-  const fileName = `自动同步_${new Date().toISOString().slice(0, 10)}.xlsx`;
-
-  await dingtalkService.uploadFile(xlsxBuffer, fileName, folderId || '');
+  // 2. 写入钉钉多维表
+  await dingtalkService.writeDataToNotable(documentId, sheetName, operatorId || config.dingtalk.operatorId, robots);
 
   // 3. 记录日志
   await supabase.from('dingtalk_sync_logs').insert({
     direction: 'export',
-    file_name: fileName,
+    file_name: `钉钉文档-${documentId}`,
     record_count: robots.length,
     status: 'success',
     synced_by: '系统自动同步',
